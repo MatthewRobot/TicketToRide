@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
 import '../models/destination.dart';
 import '../models/card.dart' as game_card;
+import 'place_Route.dart';
 
 class PlayerScreen extends StatefulWidget {
   final int playerIndex;
@@ -70,6 +71,32 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     ),
                   ),
                 ],
+              ),
+            ),
+            
+            SizedBox(height: screenSize.height * 0.01),
+            
+            // Test button for place route
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PlaceRoute(
+                      playerIndex: widget.playerIndex,
+                      routeInfo: 'Route: Boston → New York (3 segments, Red)',
+                    ),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[600],
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(vertical: screenSize.height * 0.01),
+              ),
+              child: Text(
+                'Test Place Route',
+                style: TextStyle(fontSize: screenSize.width * 0.04),
               ),
             ),
             
