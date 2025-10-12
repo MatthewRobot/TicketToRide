@@ -77,4 +77,22 @@ class Card {
 
   @override
   int get hashCode => Object.hash(type, isVisible);
+
+  // Firebase serialization
+  Map<String, dynamic> toFirebase() {
+    return {
+      'type': type.name,
+      'isVisible': isVisible,
+    };
+  }
+
+  factory Card.fromFirebase(Map<String, dynamic> data) {
+    return Card(
+      type: CardType.values.firstWhere(
+        (e) => e.name == data['type'],
+        orElse: () => CardType.red,
+      ),
+      isVisible: data['isVisible'] as bool,
+    );
+  }
 }

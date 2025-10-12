@@ -119,4 +119,27 @@ class Deck {
   String toString() {
     return 'Deck(stack: ${_stack.length}, table: ${_table.length}, used: ${_usedPile.length})';
   }
+
+  // Firebase serialization
+  Map<String, dynamic> toFirebase() {
+    return {
+      'stack': _stack.map((c) => c.toFirebase()).toList(),
+      'table': _table.map((c) => c.toFirebase()).toList(),
+      'usedPile': _usedPile.map((c) => c.toFirebase()).toList(),
+    };
+  }
+
+  factory Deck.fromFirebase(Map<String, dynamic> data) {
+    final deck = Deck();
+    deck._stack = (data['stack'] as List)
+        .map((c) => Card.fromFirebase(c))
+        .toList();
+    deck._table = (data['table'] as List)
+        .map((c) => Card.fromFirebase(c))
+        .toList();
+    deck._usedPile = (data['usedPile'] as List)
+        .map((c) => Card.fromFirebase(c))
+        .toList();
+    return deck;
+  }
 }

@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/game_provider.dart';
+import 'choose_destination.dart';
+import 'host_screen.dart';
 
 class ChooseColorName extends StatefulWidget {
   const ChooseColorName({super.key});
@@ -163,18 +167,37 @@ class _ChooseColorNameState extends State<ChooseColorName> {
 
   void _submit() {
     if (_canSubmit()) {
-      // TODO: Create player and navigate to next screen
+      final gameProvider = Provider.of<GameProvider>(context, listen: false);
+      
+      // Create the player
+      gameProvider.addPlayer(_nameController.text.trim(), _selectedColor!);
+      
+      // Show debug info
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Player ${_nameController.text} created with color ${_selectedColor.toString()}'),
+          content: Text('Player ${_nameController.text.trim()} created. Navigating to destination selection...'),
+          duration: const Duration(seconds: 2),
         ),
       );
       
-      // For now, just show a message
-      // In a real implementation, you would:
-      // 1. Create a Player object
-      // 2. Add to game state
-      // 3. Navigate to next screen or back to host screen
+      // Navigate to destination selection
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const ChooseDestination(
+            isInitialSelection: true,
+          ),
+        ),
+      ).then((_) {
+        // After destination selection, navigate to host screen
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const HostScreen(),
+          ),
+          (route) => false, // Remove all previous routes
+        );
+      });
     }
   }
 }

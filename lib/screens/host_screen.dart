@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/game_provider.dart';
 
 class HostScreen extends StatefulWidget {
   const HostScreen({super.key});
@@ -8,18 +10,11 @@ class HostScreen extends StatefulWidget {
 }
 
 class _HostScreenState extends State<HostScreen> {
-  final List<Color> _cardColors = [
-    Colors.red,
-    Colors.blue,
-    Colors.green,
-    Colors.yellow,
-    Colors.purple,
-    Colors.orange,
-  ];
 
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
+    final gameProvider = Provider.of<GameProvider>(context);
     final isGameEnded = false; // This would be controlled by game state
     
     return Scaffold(
@@ -28,6 +23,15 @@ class _HostScreenState extends State<HostScreen> {
         centerTitle: true,
         backgroundColor: Colors.blue[800],
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              gameProvider.initializeTestGame();
+            },
+            tooltip: 'Initialize Test Game',
+          ),
+        ],
       ),
       body: Padding(
         padding: EdgeInsets.all(screenSize.width * 0.01),
@@ -72,17 +76,69 @@ class _HostScreenState extends State<HostScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Leaderboard',
+                            'Leaderboard (${gameProvider.players.length} players)',
                             style: TextStyle(
                               fontSize: screenSize.width * 0.02,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           SizedBox(height: screenSize.height * 0.01),
-                          Expanded(
-                            child: _buildLeaderboardTable(screenSize, isGameEnded),
-                          ),
+                          if (gameProvider.players.isEmpty)
+                            Center(
+                              child: Text(
+                                'Click refresh to initialize test game',
+                                style: TextStyle(
+                                  fontSize: screenSize.width * 0.012,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            )
+                          else
+                            Expanded(
+                              child: _buildLeaderboardTable(screenSize, isGameEnded, gameProvider),
+                            ),
                         ],
+                      ),
+                    ),
+                  ),
+                  
+                  SizedBox(height: screenSize.height * 0.01),
+                  
+                  // Destination Drawing Button
+                  Container(
+                    margin: EdgeInsets.symmetric(horizontal: screenSize.width * 0.01),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        // This would trigger destination selection on player devices
+                        // For now, show a message about how this would work
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Destination selection will appear on player devices'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                        
+                        // In a real implementation, this would:
+                        // 1. Send a signal to all player devices
+                        // 2. Each player device would show the destination selection screen
+                        // 3. Host screen would remain visible to all players
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green[600],
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(
+                          vertical: screenSize.height * 0.015,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Text(
+                        'Draw Destinations',
+                        style: TextStyle(
+                          fontSize: screenSize.width * 0.015,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -111,7 +167,7 @@ class _HostScreenState extends State<HostScreen> {
                           ),
                           SizedBox(height: screenSize.height * 0.01),
                           Expanded(
-                            child: _buildDeckRow(screenSize),
+                            child: _buildDeckRow(screenSize, gameProvider),
                           ),
                         ],
                       ),
@@ -126,13 +182,8 @@ class _HostScreenState extends State<HostScreen> {
     );
   }
 
-  Widget _buildLeaderboardTable(Size screenSize, bool isGameEnded) {
-    final players = [
-      {'name': 'Player 1', 'routePoints': 15, 'longestRoad': '✓', 'destinationPoints': 8, 'totalPoints': 33},
-      {'name': 'Player 2', 'routePoints': 12, 'longestRoad': '✗', 'destinationPoints': 5, 'totalPoints': 17},
-      {'name': 'Player 3', 'routePoints': 8, 'longestRoad': '✗', 'destinationPoints': 3, 'totalPoints': 11},
-      {'name': 'Player 4', 'routePoints': 5, 'longestRoad': '✗', 'destinationPoints': 2, 'totalPoints': 7},
-    ];
+  Widget _buildLeaderboardTable(Size screenSize, bool isGameEnded, GameProvider gameProvider) {
+    final players = gameProvider.players;
 
     return SingleChildScrollView(
       child: DataTable(
@@ -193,32 +244,32 @@ class _HostScreenState extends State<HostScreen> {
             cells: [
               DataCell(
                 Text(
-                  player['name'] as String,
+                  player.name,
                   style: TextStyle(fontSize: screenSize.width * 0.012),
                 ),
               ),
               DataCell(
                 Text(
-                  '${player['routePoints']}',
+                  '0', // Route points - would be calculated from routes built
                   style: TextStyle(fontSize: screenSize.width * 0.012),
                 ),
               ),
               DataCell(
                 Text(
-                  player['longestRoad'] as String,
+                  '✗', // Longest road - would be calculated
                   style: TextStyle(fontSize: screenSize.width * 0.012),
                 ),
               ),
               if (isGameEnded) ...[
                 DataCell(
                   Text(
-                    '${player['destinationPoints']}',
+                    '0', // Destination points - would be calculated
                     style: TextStyle(fontSize: screenSize.width * 0.012),
                   ),
                 ),
                 DataCell(
                   Text(
-                    '${player['totalPoints']}',
+                    '0', // Total points - would be calculated
                     style: TextStyle(fontSize: screenSize.width * 0.012),
                   ),
                 ),
@@ -230,81 +281,119 @@ class _HostScreenState extends State<HostScreen> {
     );
   }
 
-  Widget _buildDeckRow(Size screenSize) {
-    final cardTexts = [
-      'Red',
-      'Blue',
-      'Green',
-      'Yellow',
-      'Purple',
-      'Orange',
-    ];
-
+  Widget _buildDeckRow(Size screenSize, GameProvider gameProvider) {
+    final tableCards = gameProvider.tableCards;
+    
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: List.generate(6, (index) {
-        return Expanded(
-          child: Container(
-            margin: EdgeInsets.symmetric(horizontal: screenSize.width * 0.002),
-            child: ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  // Cycle through colors when pressed
-                  _cardColors[index] = _getNextColor(_cardColors[index]);
-                });
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _cardColors[index],
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(
-                  vertical: screenSize.height * 0.02,
+        // Show table cards (first 5) and deck (6th button)
+        if (index < 5 && index < tableCards.length) {
+          final card = tableCards[index];
+          return Expanded(
+            child: Container(
+              margin: EdgeInsets.symmetric(horizontal: screenSize.width * 0.002),
+              child: ElevatedButton(
+                onPressed: () {
+                  // Take card from table
+                  if (gameProvider.players.isNotEmpty) {
+                    gameProvider.playerTakeFromTable(gameProvider.players[0], index);
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: card.color,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(
+                    vertical: screenSize.height * 0.02,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: const BorderSide(color: Colors.black, width: 2),
+                  ),
+                  elevation: 2,
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  side: const BorderSide(color: Colors.black, width: 2),
+                child: Text(
+                  card.name,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: screenSize.width * 0.01,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-                elevation: 2,
-              ),
-              child: Text(
-                cardTexts[index],
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: screenSize.width * 0.01,
-                ),
-                textAlign: TextAlign.center,
               ),
             ),
-          ),
-        );
+          );
+        } else if (index == 5) {
+          // Deck button
+          return Expanded(
+            child: Container(
+              margin: EdgeInsets.symmetric(horizontal: screenSize.width * 0.002),
+              child: ElevatedButton(
+                onPressed: () {
+                  // Draw from deck
+                  if (gameProvider.players.isNotEmpty) {
+                    gameProvider.playerDrawFromDeck(gameProvider.players[0]);
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.grey[600],
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(
+                    vertical: screenSize.height * 0.02,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: const BorderSide(color: Colors.black, width: 2),
+                  ),
+                  elevation: 2,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'DECK',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: screenSize.width * 0.01,
+                      ),
+                    ),
+                    Text(
+                      '${gameProvider.stackSize}',
+                      style: TextStyle(
+                        fontSize: screenSize.width * 0.008,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        } else {
+          // Empty slot
+          return Expanded(
+            child: Container(
+              margin: EdgeInsets.symmetric(horizontal: screenSize.width * 0.002),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey, width: 1),
+                ),
+                child: Center(
+                  child: Text(
+                    'Empty',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: screenSize.width * 0.01,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
       }),
     );
   }
 
-  Color _getNextColor(Color currentColor) {
-    final allColors = [
-      Colors.red,
-      Colors.blue,
-      Colors.green,
-      Colors.yellow,
-      Colors.purple,
-      Colors.orange,
-      Colors.pink,
-      Colors.teal,
-      Colors.indigo,
-      Colors.amber,
-      Colors.cyan,
-      Colors.lime,
-    ];
-    
-    // Find current color index by comparing RGB values
-    int currentIndex = 0;
-    for (int i = 0; i < allColors.length; i++) {
-      if (allColors[i].value == currentColor.value) {
-        currentIndex = i;
-        break;
-      }
-    }
-    
-    return allColors[(currentIndex + 1) % allColors.length];
-  }
 }

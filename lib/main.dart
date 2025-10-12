@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:ticket_to_ride/screens/entrance.dart';
+import 'package:ticket_to_ride/providers/game_provider.dart';
 
 void main() {
   runApp(const MyApp());
@@ -17,9 +19,12 @@ class _MainAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: ' Home Page',
-      home: const Entrance(),
+    return ChangeNotifierProvider(
+      create: (context) => GameProvider(),
+      child: MaterialApp(
+        title: 'Ticket to Ride',
+        home: const Entrance(),
+      ),
     );
   }
 }
