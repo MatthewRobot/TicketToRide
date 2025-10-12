@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/Entrance.dart';
+import 'package:ticket_to_ride/screens/entrance.dart';
 
 void main() {
   runApp(const MyApp());
@@ -19,7 +19,7 @@ class _MainAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: ' Home Page',
-      home: Entrance(),
+      home: const Entrance(),
     );
   }
 }

@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
-import 'ChooseColor&Name.dart';
-import 'HostScreen.dart';
+import 'choose_color_name.dart';
+import 'host_screen.dart';
 
-class Entrance extends StatelessWidget {
+class Entrance extends StatefulWidget {
   const Entrance({super.key});
 
+  @override
+  State<Entrance> createState() => _Entrance();
+}
+
+class _Entrance extends State<Entrance> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
