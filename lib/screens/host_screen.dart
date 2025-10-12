@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../providers/game_provider.dart';
 import 'player_screen.dart';
 import '../models/destination.dart';
@@ -46,10 +47,11 @@ class _HostScreenState extends State<HostScreen> {
       body: Padding(
         padding: EdgeInsets.all(screenSize.width * 0.01),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch, // ⬅️ Optional, but good practice to ensure children fill height
           children: [
-            // Map Section - Smaller
+            // Map Section - Use Expanded for full height and proportional width
             Expanded(
-              flex: 2,
+              flex: 69, // Proportional to your desired 69% width
               child: Container(
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.grey),
@@ -57,20 +59,23 @@ class _HostScreenState extends State<HostScreen> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8.0),
-                  child: Image.asset(
-                    'assets/images/Map.png',
-                    fit: BoxFit.contain,
+                  child: SvgPicture.asset(
+                    'assets/images/map.svg',
+                    // The svg will now fill the Expanded widget's space
+                    fit: BoxFit.contain, // Ensures the SVG is as large as possible without cropping, keeping its proportions
+                    placeholderBuilder: (context) => const CircularProgressIndicator(),
                   ),
                 ),
               ),
             ),
             
-            SizedBox(width: screenSize.width * 0.01),
+            SizedBox(width: screenSize.width * 0.01), // Spacer
             
-            // Sidebar with Leaderboard and Deck
+            // Sidebar - Use Expanded for full height and proportional width
             Expanded(
-              flex: 1,
+              flex: 28, // Proportional to your desired 28% width
               child: Column(
+                // The Column inside the Expanded will now correctly use the full height.
                 children: [
                   // Leaderboard Section
                   Expanded(
@@ -197,53 +202,68 @@ class _HostScreenState extends State<HostScreen> {
 
     return SingleChildScrollView(
       child: DataTable(
-        columnSpacing: screenSize.width * 0.01,
-        headingRowHeight: screenSize.height * 0.04,
-        dataRowHeight: screenSize.height * 0.05,
+        columnSpacing: screenSize.width * 0.005, // Reduced spacing
+        headingRowHeight: screenSize.height * 0.035, // Reduced height
+        dataRowHeight: screenSize.height * 0.04, // Reduced height
         columns: [
           DataColumn(
-            label: Text(
-              'Player',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: screenSize.width * 0.015,
+            label: Expanded(
+              child: Text(
+                'Name',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: screenSize.width * 0.01, // Reduced font size
+                ),
+                textAlign: TextAlign.center,
               ),
             ),
           ),
           DataColumn(
-            label: Text(
-              'Route Pts',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: screenSize.width * 0.015,
+            label: Expanded(
+              child: Text(
+                'Pts', // Shorter header
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: screenSize.width * 0.01, // Reduced font size
+                ),
+                textAlign: TextAlign.center,
               ),
             ),
           ),
           DataColumn(
-            label: Text(
-              'Longest Road',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: screenSize.width * 0.015,
+            label: Expanded(
+              child: Text(
+                'Longest', // Shorter header
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: screenSize.width * 0.01, // Reduced font size
+                ),
+                textAlign: TextAlign.center,
               ),
             ),
           ),
           if (isGameEnded) ...[
             DataColumn(
-              label: Text(
-                'Destination Pts',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: screenSize.width * 0.015,
+              label: Expanded(
+                child: Text(
+                  'Dest', // Shorter header
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: screenSize.width * 0.01, // Reduced font size
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               ),
             ),
             DataColumn(
-              label: Text(
-                'Total Pts',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: screenSize.width * 0.015,
+              label: Expanded(
+                child: Text(
+                  'Total', // Shorter header
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: screenSize.width * 0.01, // Reduced font size
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               ),
             ),
@@ -255,32 +275,32 @@ class _HostScreenState extends State<HostScreen> {
               DataCell(
                 Text(
                   player.name,
-                  style: TextStyle(fontSize: screenSize.width * 0.012),
+                  style: TextStyle(fontSize: screenSize.width * 0.008), // Reduced font size
                 ),
               ),
               DataCell(
                 Text(
                   '0', // Route points - would be calculated from routes built
-                  style: TextStyle(fontSize: screenSize.width * 0.012),
+                  style: TextStyle(fontSize: screenSize.width * 0.008), // Reduced font size
                 ),
               ),
               DataCell(
                 Text(
                   '✗', // Longest road - would be calculated
-                  style: TextStyle(fontSize: screenSize.width * 0.012),
+                  style: TextStyle(fontSize: screenSize.width * 0.008), // Reduced font size
                 ),
               ),
               if (isGameEnded) ...[
                 DataCell(
                   Text(
                     '0', // Destination points - would be calculated
-                    style: TextStyle(fontSize: screenSize.width * 0.012),
+                    style: TextStyle(fontSize: screenSize.width * 0.008), // Reduced font size
                   ),
                 ),
                 DataCell(
                   Text(
                     '0', // Total points - would be calculated
-                    style: TextStyle(fontSize: screenSize.width * 0.012),
+                    style: TextStyle(fontSize: screenSize.width * 0.008), // Reduced font size
                   ),
                 ),
               ],

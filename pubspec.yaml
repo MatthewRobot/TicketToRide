@@ -25,6 +25,9 @@ dependencies:
   
   # State Management
   provider: ^6.1.1
+  
+  # SVG Support
+  flutter_svg: ^2.0.9
 
 dev_dependencies:
   flutter_test:
@@ -37,4 +40,5 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
+    - assets/map_info.JSON
   
