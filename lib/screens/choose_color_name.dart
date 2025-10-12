@@ -1,35 +1,180 @@
 import 'package:flutter/material.dart';
 
-class ChooseColorName extends StatelessWidget {
+class ChooseColorName extends StatefulWidget {
   const ChooseColorName({super.key});
 
   @override
+  State<ChooseColorName> createState() => _ChooseColorNameState();
+}
+
+class _ChooseColorNameState extends State<ChooseColorName> {
+  final TextEditingController _nameController = TextEditingController();
+  Color? _selectedColor;
+  
+  final List<Color> _availableColors = [
+    Colors.red,
+    Colors.blue,
+    Colors.green,
+    Colors.yellow,
+    Colors.purple,
+    Colors.orange,
+    Colors.pink,
+    Colors.teal,
+  ];
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Choose Color & Name'),
         centerTitle: true,
+        backgroundColor: Colors.blue[800],
+        foregroundColor: Colors.white,
       ),
-      body: const Center(
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(screenSize.width * 0.05),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            SizedBox(height: screenSize.height * 0.02),
+            
+            // Choose Name Section
             Text(
-              'Choose Color & Name Screen',
+              'Choose Name',
               style: TextStyle(
-                fontSize: 24,
+                fontSize: screenSize.width * 0.06,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            SizedBox(height: 20),
-            Text(
-              'This screen will allow players to select their color and enter their name.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16),
+            SizedBox(height: screenSize.height * 0.02),
+            
+            // Name Input Field
+            TextField(
+              controller: _nameController,
+              decoration: InputDecoration(
+                hintText: 'Enter your name',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: screenSize.width * 0.03,
+                  vertical: screenSize.height * 0.02,
+                ),
+              ),
+              style: TextStyle(fontSize: screenSize.width * 0.04),
             ),
+            
+            SizedBox(height: screenSize.height * 0.04),
+            
+            // Choose Color Section
+            Text(
+              'Choose Color',
+              style: TextStyle(
+                fontSize: screenSize.width * 0.06,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: screenSize.height * 0.02),
+            
+            // Color Selection Grid
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 4,
+                crossAxisSpacing: screenSize.width * 0.02,
+                mainAxisSpacing: screenSize.height * 0.01,
+                childAspectRatio: 1.2,
+              ),
+              itemCount: _availableColors.length,
+              itemBuilder: (context, index) {
+                final color = _availableColors[index];
+                final isSelected = _selectedColor == color;
+                
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedColor = color;
+                    });
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: color,
+                      border: Border.all(
+                        color: isSelected ? Colors.black : Colors.grey,
+                        width: isSelected ? 3 : 1,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: isSelected
+                        ? const Icon(
+                            Icons.check,
+                            color: Colors.white,
+                            size: 30,
+                          )
+                        : null,
+                  ),
+                );
+              },
+            ),
+            
+            SizedBox(height: screenSize.height * 0.05),
+            
+            // Submit Button
+            ElevatedButton(
+              onPressed: _canSubmit() ? _submit : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[800],
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(
+                  vertical: screenSize.height * 0.02,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                'Submit',
+                style: TextStyle(
+                  fontSize: screenSize.width * 0.05,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            
+            SizedBox(height: screenSize.height * 0.02),
           ],
         ),
       ),
     );
+  }
+
+  bool _canSubmit() {
+    return _nameController.text.trim().isNotEmpty && _selectedColor != null;
+  }
+
+  void _submit() {
+    if (_canSubmit()) {
+      // TODO: Create player and navigate to next screen
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Player ${_nameController.text} created with color ${_selectedColor.toString()}'),
+        ),
+      );
+      
+      // For now, just show a message
+      // In a real implementation, you would:
+      // 1. Create a Player object
+      // 2. Add to game state
+      // 3. Navigate to next screen or back to host screen
+    }
   }
 }
