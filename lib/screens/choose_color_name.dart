@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
 import 'choose_destination.dart';
-import 'host_screen.dart';
 
 class ChooseColorName extends StatefulWidget {
   const ChooseColorName({super.key});
@@ -189,14 +188,8 @@ class _ChooseColorNameState extends State<ChooseColorName> {
           ),
         ),
       ).then((_) {
-        // After destination selection, navigate to host screen
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const HostScreen(),
-          ),
-          (route) => false, // Remove all previous routes
-        );
+        // After destination selection, the player will be on their player screen
+        // No additional navigation needed here
       });
     }
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
 import '../models/destination.dart';
+import 'player_screen.dart';
 
 class ChooseDestination extends StatefulWidget {
   final bool isInitialSelection;
@@ -221,10 +222,18 @@ class _ChooseDestinationState extends State<ChooseDestination> {
       if (gameProvider.players.isNotEmpty) {
         final player = gameProvider.players.last; // Get the most recently added player
         gameProvider.addSelectedDestinations(player, _selectedDestinations);
+        
+        // Navigate to player screen
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PlayerScreen(
+              playerIndex: gameProvider.players.length - 1,
+            ),
+          ),
+          (route) => false, // Remove all previous routes
+        );
       }
-      
-      // Navigate back
-      Navigator.of(context).pop();
       
       // Show confirmation
       ScaffoldMessenger.of(context).showSnackBar(

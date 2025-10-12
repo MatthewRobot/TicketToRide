@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
+import 'player_screen.dart';
+import '../models/destination.dart';
+import '../models/card.dart' as game_card;
 
 class HostScreen extends StatefulWidget {
   const HostScreen({super.key});
@@ -30,6 +33,13 @@ class _HostScreenState extends State<HostScreen> {
               gameProvider.initializeTestGame();
             },
             tooltip: 'Initialize Test Game',
+          ),
+          IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () {
+              _testPlayerScreen(context, gameProvider);
+            },
+            tooltip: 'Test Player Screen',
           ),
         ],
       ),
@@ -157,8 +167,8 @@ class _HostScreenState extends State<HostScreen> {
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
+          children: [
+            Text(
                             'Deck',
                             style: TextStyle(
                               fontSize: screenSize.width * 0.02,
@@ -393,6 +403,61 @@ class _HostScreenState extends State<HostScreen> {
           );
         }
       }),
+    );
+  }
+
+  void _testPlayerScreen(BuildContext context, GameProvider gameProvider) {
+    if (gameProvider.players.isEmpty) {
+      // If no players exist, create a test player
+      gameProvider.addPlayer('Test Player', Colors.red);
+      gameProvider.addPlayer('Test Player 2', Colors.blue);
+      
+      // Add some test destination cards
+      final testDestinations = [
+        Destination(from: 'Boston', to: 'Miami', points: 12),
+        Destination(from: 'Los Angeles', to: 'New York', points: 21),
+        Destination(from: 'Seattle', to: 'Los Angeles', points: 9),
+      ];
+      
+      // Add destinations to the first player
+      if (gameProvider.players.isNotEmpty) {
+        gameProvider.players[0].handOfDestinationCards.addAll(testDestinations);
+      }
+      
+      // Add some test train cards
+      final testCards = [
+        game_card.Card(type: game_card.CardType.red, isVisible: true),
+        game_card.Card(type: game_card.CardType.red, isVisible: true),
+        game_card.Card(type: game_card.CardType.blue, isVisible: true),
+        game_card.Card(type: game_card.CardType.green, isVisible: true),
+        game_card.Card(type: game_card.CardType.yellow, isVisible: true),
+        game_card.Card(type: game_card.CardType.yellow, isVisible: true),
+        game_card.Card(type: game_card.CardType.yellow, isVisible: true),
+        game_card.Card(type: game_card.CardType.pink, isVisible: true),
+        game_card.Card(type: game_card.CardType.rainbow, isVisible: true),
+      ];
+      
+      // Add train cards to the first player
+      if (gameProvider.players.isNotEmpty) {
+        gameProvider.players[0].handOfCards.addAll(testCards);
+      }
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Test player created with sample cards'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+    
+    // Navigate to the first player's screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PlayerScreen(
+          playerIndex: 0,
+        ),
+      ),
     );
   }
 
