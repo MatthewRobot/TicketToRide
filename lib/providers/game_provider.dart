@@ -51,7 +51,7 @@ class GameProvider extends ChangeNotifier {
   // Start the game
   void startGame() {
     _gameManager.startGame();
-    notifyListeners();
+    saveGame(); // Save the game state after starting
   }
 
   // FIXED: Draw card from deck

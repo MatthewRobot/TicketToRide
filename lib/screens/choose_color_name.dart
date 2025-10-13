@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
 import 'choose_destination.dart';
+import 'choose_destination.dart';
 
 class ChooseColorName extends StatefulWidget {
   const ChooseColorName({super.key});
@@ -31,6 +32,7 @@ class _ChooseColorNameState extends State<ChooseColorName> {
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
+    final gameProvider = Provider.of<GameProvider>(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -84,48 +86,8 @@ class _ChooseColorNameState extends State<ChooseColorName> {
             ),
             SizedBox(height: screenSize.height * 0.02),
 
-            // Color Selection Grid
-            // GridView.builder(
-            //   shrinkWrap: true,
-            //   physics: const NeverScrollableScrollPhysics(),
-            //   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            //     crossAxisCount: 4,
-            //     crossAxisSpacing: screenSize.width * 0.02,
-            //     mainAxisSpacing: screenSize.height * 0.01,
-            //     childAspectRatio: 1.2,
-            //   ),
-            //   itemCount: _availableColors.length,
-            //   itemBuilder: (context, index) {
-            //     final color = _availableColors[index];
-            //     final isSelected = _selectedColor == color;
-
-            //     return GestureDetector(
-            //       onTap: () {
-            //         setState(() {
-            //           _selectedColor = color;
-            //         });
-            //       },
-            //       child: Container(
-            //         decoration: BoxDecoration(
-            //           color: color,
-            //           border: Border.all(
-            //             color: isSelected ? Colors.black : Colors.grey,
-            //             width: isSelected ? 3 : 1,
-            //           ),
-            //           borderRadius: BorderRadius.circular(8),
-            //         ),
-            //         child: isSelected
-            //             ? const Icon(
-            //                 Icons.check,
-            //                 color: Colors.white,
-            //                 size: 30,
-            //               )
-            //             : null,
-            //       ),
-            //     );
-            //   },
-            // ),
-            _buildColorSelector(GameProvider()),
+            // Color Selection
+            _buildColorSelector(gameProvider),
 
             SizedBox(height: screenSize.height * 0.05),
 
@@ -143,7 +105,7 @@ class _ChooseColorNameState extends State<ChooseColorName> {
                 ),
               ),
               child: Text(
-                'Submit',
+                'Join Game',
                 style: TextStyle(
                   fontSize: screenSize.width * 0.05,
                   fontWeight: FontWeight.bold,
@@ -152,6 +114,17 @@ class _ChooseColorNameState extends State<ChooseColorName> {
             ),
 
             SizedBox(height: screenSize.height * 0.02),
+
+            // Info text
+            Text(
+              'You will select destination cards after the host starts the game',
+              style: TextStyle(
+                fontSize: screenSize.width * 0.035,
+                color: Colors.grey[600],
+                fontStyle: FontStyle.italic,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
@@ -162,40 +135,13 @@ class _ChooseColorNameState extends State<ChooseColorName> {
     return _nameController.text.trim().isNotEmpty && _selectedColor != null;
   }
 
-//   void _submit() {
-//   if (_canSubmit()) {
-//     final gameProvider = Provider.of<GameProvider>(context, listen: false);
-//     final playerName = _nameController.text.trim();
-//     final playerColor = _selectedColor!;
-
-//     // 1. Add the player (which calls saveGame() and updates state for everyone)
-//     gameProvider.addPlayer(playerName, playerColor);
-
-//     // 2. Find the index of the player that was just added.
-//     // This relies on the new player being the last in the *new* list.
-//     // This is still slightly race-condition prone, but is the best simple approach
-//     // without using Firebase Authentication/UIDs for identification.
-//     final playerIndex = gameProvider.players.length - 1;
-
-//     // Navigate to destination selection, passing the player's index
-//     Navigator.push(
-//       context,
-//       MaterialPageRoute(
-//         builder: (context) => ChooseDestination(
-//           isInitialSelection: true,
-//           playerIndex: playerIndex, // <<< PASS THE INDEX
-//         ),
-//       ),
-//     );
-//   }
-// }
-  void _submit() {
+  void _submit() async {
     if (_canSubmit()) {
       final gameProvider = Provider.of<GameProvider>(context, listen: false);
       final playerName = _nameController.text.trim();
       final playerColor = _selectedColor!;
 
-      // 1. Final check to ensure the color hasn't been taken in a race
+      // Final check to ensure the color hasn't been taken
       if (gameProvider.players.any((p) => p.color == playerColor)) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -204,24 +150,26 @@ class _ChooseColorNameState extends State<ChooseColorName> {
         return;
       }
 
-      // 2. Add the player to the game state
-      // We assume this is synchronous in GameManager and triggers an async saveGame()
+      // Add the player to the game state
       gameProvider.addPlayer(playerName, playerColor);
 
-      // 3. The newly added player is now the last one in the local list.
-      // We rely on this index for the next screen navigation.
-      final playerIndex = gameProvider.players.length - 1;
-
-      // 4. Navigate to destination selection, passing the player's index
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ChooseDestination(
-            isInitialSelection: true,
-            playerIndex: playerIndex, // Use the determined index
+      // Show success message and navigate to waiting screen
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Joined as $playerName! Waiting for host to start game...'),
+            duration: const Duration(seconds: 3),
           ),
-        ),
-      );
+        );
+
+        // Navigate to a waiting screen instead of destination selection
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const WaitingForGameStart(),
+          ),
+        );
+      }
     }
   }
 
@@ -236,15 +184,15 @@ class _ChooseColorNameState extends State<ChooseColorName> {
 
         return GestureDetector(
           onTap: isTaken
-              ? null // Disable tap if color is taken
+              ? null
               : () {
                   setState(() {
                     _selectedColor = color;
                   });
                 },
           child: Container(
-            width: 40,
-            height: 40,
+            width: 50,
+            height: 50,
             decoration: BoxDecoration(
               color: color,
               shape: BoxShape.circle,
@@ -254,14 +202,142 @@ class _ChooseColorNameState extends State<ChooseColorName> {
               ),
             ),
             child: isTaken
-                ? const Icon(Icons.close,
-                    color: Colors.white, size: 20) // Indicate taken
+                ? const Icon(Icons.close, color: Colors.white, size: 24)
                 : (_selectedColor == color
-                    ? const Icon(Icons.check, color: Colors.white)
+                    ? const Icon(Icons.check, color: Colors.white, size: 24)
                     : null),
           ),
         );
       }).toList(),
+    );
+  }
+}
+
+// NEW: Waiting screen that players see after joining
+class WaitingForGameStart extends StatelessWidget {
+  const WaitingForGameStart({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final gameProvider = Provider.of<GameProvider>(context);
+
+    // Once game starts, navigate to destination selection
+    if (gameProvider.gameStarted) {
+      // Find this player's index
+      // Note: This is a simplified approach. In production, you'd want to identify
+      // players by a unique ID rather than relying on list order
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Get the current player (last in the list, the one who just joined)
+        final playerIndex = gameProvider.players.length - 1;
+        
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChooseDestination(
+              isInitialSelection: true,
+              playerIndex: playerIndex,
+            ),
+          ),
+        );
+      });
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Waiting for Game'),
+        centerTitle: true,
+        backgroundColor: Colors.blue[800],
+        foregroundColor: Colors.white,
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 30),
+            const Text(
+              'Waiting for host to start the game...',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Players in lobby: ${gameProvider.players.length}',
+              style: const TextStyle(
+                fontSize: 16,
+                color: Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 30),
+            
+            // Show all players in the lobby
+            Container(
+              padding: const EdgeInsets.all(20),
+              margin: const EdgeInsets.symmetric(horizontal: 32),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: Column(
+                children: [
+                  const Text(
+                    'Players in Lobby:',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ...gameProvider.players.map((player) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: player.color,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.black,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            player.name,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 20),
+            const Text(
+              'You will select destination cards once the game starts',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+                fontStyle: FontStyle.italic,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

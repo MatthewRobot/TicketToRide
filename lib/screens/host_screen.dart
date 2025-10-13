@@ -29,6 +29,11 @@ class _HostScreenState extends State<HostScreen> {
     });
   }
 
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
   void _createGameIfNeeded() async {
     final gameProvider = Provider.of<GameProvider>(context, listen: false);
     
@@ -44,8 +49,9 @@ class _HostScreenState extends State<HostScreen> {
 
       await gameProvider.connectToGame(gameId);
       
-      // Don't initialize test game - just mark as initialized
-      // gameProvider.initializeTestGame(); // Comment this out for real MVP
+      // Initialize the game manager (but don't call initializeTestGame)
+      // Just mark it as ready to accept players
+      await gameProvider.saveGame();
       
       setState(() {
         _displayedGameId = gameId;
