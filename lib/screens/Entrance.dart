@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'choose_color_name.dart';
 import 'host_screen.dart';
+import 'package:provider/provider.dart';
+import '../providers/game_provider.dart';
 
 class Entrance extends StatefulWidget {
   const Entrance({super.key});
@@ -10,6 +12,14 @@ class Entrance extends StatefulWidget {
 }
 
 class _Entrance extends State<Entrance> {
+  final TextEditingController _gameIdController = TextEditingController();
+
+  @override
+  void dispose() {
+    _gameIdController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -29,15 +39,24 @@ class _Entrance extends State<Entrance> {
               ),
             ),
             const SizedBox(height: 50),
+            SizedBox(
+              child: TextField(
+                controller: _gameIdController,
+                decoration: const InputDecoration(
+                  labelText: 'Enter Game ID',
+                  hintText: 'e.g., ABC-123',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.vpn_key),
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ChooseColorName()),
-                );
-              },
+              onPressed: () => _joinGame(context), // Call the new join function
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
                 textStyle: const TextStyle(fontSize: 18),
               ),
               child: const Text('Join Game'),
@@ -51,7 +70,8 @@ class _Entrance extends State<Entrance> {
                 );
               },
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
                 textStyle: const TextStyle(fontSize: 18),
               ),
               child: const Text('Host Game'),
@@ -59,6 +79,29 @@ class _Entrance extends State<Entrance> {
           ],
         ),
       ),
+    );
+  }
+
+// New _joinGame method outside of build
+  void _joinGame(BuildContext context) async {
+    final gameId = _gameIdController.text.trim();
+    if (gameId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a Game ID.')),
+      );
+      return;
+    }
+
+    final gameProvider = Provider.of<GameProvider>(context, listen: false);
+
+    // 1. Connect to the Firestore document stream
+    await gameProvider.connectToGame(gameId);
+
+    // 2. Navigate to choose name/color.
+    // The game state will now be synchronized before the player adds themselves.
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const ChooseColorName()),
     );
   }
 }

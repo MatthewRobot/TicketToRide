@@ -6,10 +6,12 @@ import 'player_screen.dart';
 
 class ChooseDestination extends StatefulWidget {
   final bool isInitialSelection;
-  
+  final int? playerIndex; // <<< ADD NEW FIELD
+
   const ChooseDestination({
     super.key,
     this.isInitialSelection = true,
+    this.playerIndex, // <<< ADD TO CONSTRUCTOR
   });
 
   @override
@@ -29,14 +31,14 @@ class _ChooseDestinationState extends State<ChooseDestination> {
 
   void _loadDestinations() {
     final gameProvider = Provider.of<GameProvider>(context, listen: false);
-    
+
     // Get 3 new destinations for selection
     _availableDestinations = gameProvider.getNewDestinations();
-    
+
     // Debug info
     print('Loaded ${_availableDestinations.length} destinations for selection');
     print('Is initial selection: ${widget.isInitialSelection}');
-    
+
     setState(() {
       _isLoading = false;
     });
@@ -45,7 +47,7 @@ class _ChooseDestinationState extends State<ChooseDestination> {
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Choose Destination'),
@@ -61,7 +63,7 @@ class _ChooseDestinationState extends State<ChooseDestination> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   SizedBox(height: screenSize.height * 0.02),
-                  
+
                   // Instructions
                   Text(
                     widget.isInitialSelection
@@ -73,39 +75,50 @@ class _ChooseDestinationState extends State<ChooseDestination> {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  
+
                   SizedBox(height: screenSize.height * 0.03),
-                  
+
                   // Destination cards
                   Expanded(
                     child: ListView.builder(
                       itemCount: _availableDestinations.length,
                       itemBuilder: (context, index) {
                         final destination = _availableDestinations[index];
-                        final isSelected = _selectedDestinations.contains(destination);
-                        final maxSelection = 3; // Both initial and mid-game allow up to 3 cards
-                        final canSelect = _selectedDestinations.length < maxSelection || isSelected;
-                        
+                        final isSelected =
+                            _selectedDestinations.contains(destination);
+                        final maxSelection =
+                            3; // Both initial and mid-game allow up to 3 cards
+                        final canSelect =
+                            _selectedDestinations.length < maxSelection ||
+                                isSelected;
+
                         return Container(
-                          margin: EdgeInsets.only(bottom: screenSize.height * 0.01),
+                          margin:
+                              EdgeInsets.only(bottom: screenSize.height * 0.01),
                           child: Card(
                             elevation: isSelected ? 8 : 2,
                             color: isSelected ? Colors.blue[100] : Colors.white,
                             child: ListTile(
-                              onTap: canSelect ? () => _toggleSelection(destination) : null,
+                              onTap: canSelect
+                                  ? () => _toggleSelection(destination)
+                                  : null,
                               title: Text(
                                 destination.displayName,
                                 style: TextStyle(
                                   fontSize: screenSize.width * 0.04,
                                   fontWeight: FontWeight.bold,
-                                  color: isSelected ? Colors.blue[800] : Colors.black,
+                                  color: isSelected
+                                      ? Colors.blue[800]
+                                      : Colors.black,
                                 ),
                               ),
                               subtitle: Text(
                                 '${destination.points} points',
                                 style: TextStyle(
                                   fontSize: screenSize.width * 0.035,
-                                  color: isSelected ? Colors.blue[600] : Colors.grey[600],
+                                  color: isSelected
+                                      ? Colors.blue[600]
+                                      : Colors.grey[600],
                                 ),
                               ),
                               trailing: isSelected
@@ -125,14 +138,15 @@ class _ChooseDestinationState extends State<ChooseDestination> {
                       },
                     ),
                   ),
-                  
+
                   SizedBox(height: screenSize.height * 0.02),
-                  
+
                   // Selection info
                   Container(
                     padding: EdgeInsets.all(screenSize.width * 0.03),
                     decoration: BoxDecoration(
-                      color: _canSubmit() ? Colors.green[100] : Colors.grey[100],
+                      color:
+                          _canSubmit() ? Colors.green[100] : Colors.grey[100],
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Column(
@@ -159,9 +173,9 @@ class _ChooseDestinationState extends State<ChooseDestination> {
                       ],
                     ),
                   ),
-                  
+
                   SizedBox(height: screenSize.height * 0.02),
-                  
+
                   // Submit button
                   ElevatedButton(
                     onPressed: _canSubmit() ? _submit : null,
@@ -183,7 +197,7 @@ class _ChooseDestinationState extends State<ChooseDestination> {
                       ),
                     ),
                   ),
-                  
+
                   SizedBox(height: screenSize.height * 0.02),
                 ],
               ),
@@ -207,42 +221,53 @@ class _ChooseDestinationState extends State<ChooseDestination> {
   bool _canSubmit() {
     if (widget.isInitialSelection) {
       // Initial selection: must keep 2-3 cards
-      return _selectedDestinations.length >= 2 && _selectedDestinations.length <= 3;
+      return _selectedDestinations.length >= 2 &&
+          _selectedDestinations.length <= 3;
     } else {
       // Mid-game selection: must keep 1-3 cards
-      return _selectedDestinations.length >= 1 && _selectedDestinations.length <= 3;
+      return _selectedDestinations.length >= 1 &&
+          _selectedDestinations.length <= 3;
     }
   }
 
   void _submit() {
-    if (_canSubmit()) {
-      final gameProvider = Provider.of<GameProvider>(context, listen: false);
+  if (_canSubmit() && widget.playerIndex != null) {
+    final gameProvider = Provider.of<GameProvider>(context, listen: false);
+    
+    if (widget.playerIndex! < gameProvider.players.length) {
+      // Use the *provided index* to identify the player
+      final player = gameProvider.players[widget.playerIndex!]; 
       
-      // Add selected destinations to the most recently added player
-      if (gameProvider.players.isNotEmpty) {
-        final player = gameProvider.players.last; // Get the most recently added player
-        gameProvider.addSelectedDestinations(player, _selectedDestinations);
-        
-        // Navigate to player screen
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PlayerScreen(
-              playerIndex: gameProvider.players.length - 1,
-            ),
-          ),
-          (route) => false, // Remove all previous routes
-        );
-      }
+      // Add selected destinations to this specific player
+      gameProvider.addSelectedDestinations(player, _selectedDestinations);
       
-      // Show confirmation
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Selected ${_selectedDestinations.length} destination(s)',
+      // Navigate to player screen, using the same index
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PlayerScreen(
+            playerIndex: widget.playerIndex!, // <<< USE THE INDEX
           ),
         ),
+        (route) => false,
       );
     }
+    
+    // Show confirmation
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Selected ${_selectedDestinations.length} destination(s)',
+        ),
+      ),
+    );
+  } else {
+    // Handle error if index is missing (e.g., initial join failed)
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Error: Player identity lost. Please rejoin.'),
+      ),
+    );
   }
+}
 }

@@ -11,7 +11,12 @@ class GameProvider extends ChangeNotifier {
   GameManager _gameManager = GameManager();
   bool _isInitialized = false;
 
+  String? _gameId;
+  StreamSubscription? _gameSubscription;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
   // Getters
+  String? get gameId => _gameId;
   GameManager get gameManager => _gameManager;
   bool get isInitialized => _isInitialized;
   List<Player> get players => _gameManager.players;
@@ -29,18 +34,19 @@ class GameProvider extends ChangeNotifier {
       _gameManager.addPlayer('Player 2', Colors.blue);
       _gameManager.addPlayer('Player 3', Colors.green);
       _gameManager.addPlayer('Player 4', Colors.yellow);
-      
+
       // Start the game
       _gameManager.startGame();
       _isInitialized = true;
-      notifyListeners();
+      saveGame();
     }
   }
 
   // Add a player
   void addPlayer(String name, Color color) {
     _gameManager.addPlayer(name, color);
-    notifyListeners();
+    // REMOVE: notifyListeners();
+    saveGame(); // <- NEW: Save the updated player list to Firebase
   }
 
   // Start the game
@@ -52,12 +58,12 @@ class GameProvider extends ChangeNotifier {
   // Player actions
   void playerDrawFromDeck(Player player) {
     _gameManager.playerDrawFromDeck(player);
-    notifyListeners();
+    saveGame();
   }
 
   void playerTakeFromTable(Player player, int tableIndex) {
     _gameManager.playerTakeFromTable(player, tableIndex);
-    notifyListeners();
+    saveGame();
   }
 
   // void playerUseCard(Player player, game_card.Card card) {
@@ -66,26 +72,25 @@ class GameProvider extends ChangeNotifier {
   // }
 
   bool placeRoute({
-  required int playerIndex,
-  required TrainRoute route,
-  required List<game_card.Card> cards,
-}) {
-  // Call the method on the underlying GameManager
-  final success = _gameManager.placeRoute(playerIndex, route, cards);
-  
-  if (success) {
-    // Notify all listening widgets (like PlayerScreen) to rebuild
-    // because the player's hand, trains, and route map have changed.
-    notifyListeners();
+    required int playerIndex,
+    required TrainRoute route,
+    required List<game_card.Card> cards,
+  }) {
+    // Call the method on the underlying GameManager
+    final success = _gameManager.placeRoute(playerIndex, route, cards);
+
+    if (success) {
+      // REMOVE: notifyListeners();
+      saveGame(); // <- NEW: Save the new route and player state
+    }
+
+    return success;
   }
-  
-  return success;
-}
 
   // Player destination actions
   void playerDrawDestination(Player player) {
     _gameManager.playerDrawDestination(player);
-    notifyListeners();
+    saveGame();
   }
 
   // Get new destinations for selection
@@ -96,7 +101,8 @@ class GameProvider extends ChangeNotifier {
   // Add selected destinations to player
   void addSelectedDestinations(Player player, List<Destination> destinations) {
     _gameManager.addSelectedDestinations(player, destinations);
-    notifyListeners();
+    // REMOVE: notifyListeners();
+    saveGame(); // <- NEW: Save the updated player destination cards
   }
 
   // Get game statistics
@@ -104,11 +110,48 @@ class GameProvider extends ChangeNotifier {
     return _gameManager.getGameStats();
   }
 
+  // NEW: Starts listening to a game document for real-time updates
+  Future<void> connectToGame(String gameId) async {
+    _gameId = gameId;
+
+    _gameSubscription?.cancel(); // Cancel previous subscription
+
+    _gameSubscription = _firestore
+        .collection('games') // The main collection for games
+        .doc(gameId)
+        .snapshots()
+        .listen((snapshot) {
+      if (snapshot.exists && snapshot.data() != null) {
+        // Deserialize the game state from Firebase
+        fromFirebase(snapshot.data() as Map<String, dynamic>);
+        notifyListeners(); // Update all UI widgets
+      } else {
+        print('Game document $gameId not found or deleted.');
+      }
+    }, onError: (error) {
+      print('Firestore stream error: $error');
+    });
+  }
+
+  Future<void> saveGame() async {
+    if (_gameId != null) {
+      final gameData = toFirebase();
+      // Write the entire state to the Firestore document
+      await _firestore.collection('games').doc(_gameId!).set(gameData);
+    }
+  }
+
+  @override
+  void dispose() {
+    _gameSubscription?.cancel();
+    super.dispose();
+  }
+
   // Reset game
   void resetGame() {
     _gameManager = GameManager();
     _isInitialized = false;
-    notifyListeners();
+    saveGame();
   }
 
   // Firebase serialization

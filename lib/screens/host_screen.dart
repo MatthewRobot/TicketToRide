@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart'; // NEW IMPORT
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -6,6 +7,8 @@ import '../providers/game_provider.dart';
 import 'player_screen.dart';
 import '../models/destination.dart';
 import '../models/card.dart' as game_card;
+import 'package:cloud_firestore/cloud_firestore.dart'; // <<< ADD THIS IMPORT
+
 
 class HostScreen extends StatefulWidget {
   const HostScreen({super.key});
@@ -15,13 +18,33 @@ class HostScreen extends StatefulWidget {
 }
 
 class _HostScreenState extends State<HostScreen> {
+  
+  void _startNewGame(BuildContext context, GameProvider gameProvider) async {
+    // 1. Get a unique ID from Firestore without creating the document yet
+    final newGameRef = FirebaseFirestore.instance.collection('games').doc();
+    final gameId = newGameRef.id;
+
+    // 2. Connect provider to the new ID, starting the stream listener
+    await gameProvider.connectToGame(gameId);
+
+    // 3. Initialize the game state (this calls initializeTestGame, which now calls saveGame())
+    gameProvider.initializeTestGame();
+
+    // 4. Display the ID for players to join
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Game ID: $gameId. Share this with players!'),
+        duration: const Duration(seconds: 5),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
     final gameProvider = Provider.of<GameProvider>(context);
     final isGameEnded = false; // This would be controlled by game state
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Ticket to Ride Map'),
@@ -32,7 +55,7 @@ class _HostScreenState extends State<HostScreen> {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
-              gameProvider.initializeTestGame();
+              _startNewGame(context, gameProvider); 
             },
             tooltip: 'Initialize Test Game',
           ),
@@ -48,7 +71,8 @@ class _HostScreenState extends State<HostScreen> {
       body: Padding(
         padding: EdgeInsets.all(screenSize.width * 0.01),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch, // ⬅️ IMPORTANT: Forces children to fill the Row's height
+          crossAxisAlignment: CrossAxisAlignment
+              .stretch, // ⬅️ IMPORTANT: Forces children to fill the Row's height
           children: [
             // Map Section - Use Expanded for full height and proportional width
             Expanded(
@@ -65,13 +89,14 @@ class _HostScreenState extends State<HostScreen> {
                   //   fit: BoxFit.contain, // The SVG will now scale up to the full height of the Expanded
                   //   placeholderBuilder: (context) => const CircularProgressIndicator(),
                   // ),
-                  child: const InteractiveMapWidget(), // Replace static SVG with the interactive widget
+                  child:
+                      const InteractiveMapWidget(), // Replace static SVG with the interactive widget
                 ),
               ),
             ),
-            
+
             SizedBox(width: screenSize.width * 0.01), // Spacer
-            
+
             // Sidebar - Use Expanded for full height and proportional width
             Expanded(
               flex: 28, // Proportional to your desired 28% width
@@ -111,29 +136,32 @@ class _HostScreenState extends State<HostScreen> {
                             )
                           else
                             Expanded(
-                              child: _buildLeaderboardTable(screenSize, isGameEnded, gameProvider),
+                              child: _buildLeaderboardTable(
+                                  screenSize, isGameEnded, gameProvider),
                             ),
                         ],
                       ),
                     ),
                   ),
-                  
+
                   SizedBox(height: screenSize.height * 0.01),
-                  
+
                   // Destination Drawing Button
                   Container(
-                    margin: EdgeInsets.symmetric(horizontal: screenSize.width * 0.01),
+                    margin: EdgeInsets.symmetric(
+                        horizontal: screenSize.width * 0.01),
                     child: ElevatedButton(
                       onPressed: () {
                         // This would trigger destination selection on player devices
                         // For now, show a message about how this would work
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Destination selection will appear on player devices'),
+                            content: Text(
+                                'Destination selection will appear on player devices'),
                             duration: Duration(seconds: 2),
                           ),
                         );
-                        
+
                         // In a real implementation, this would:
                         // 1. Send a signal to all player devices
                         // 2. Each player device would show the destination selection screen
@@ -158,9 +186,9 @@ class _HostScreenState extends State<HostScreen> {
                       ),
                     ),
                   ),
-                  
+
                   SizedBox(height: screenSize.height * 0.01),
-                  
+
                   // Deck Section
                   Expanded(
                     flex: 1,
@@ -173,8 +201,8 @@ class _HostScreenState extends State<HostScreen> {
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
+                        children: [
+                          Text(
                             'Deck',
                             style: TextStyle(
                               fontSize: screenSize.width * 0.02,
@@ -198,7 +226,8 @@ class _HostScreenState extends State<HostScreen> {
     );
   }
 
-  Widget _buildLeaderboardTable(Size screenSize, bool isGameEnded, GameProvider gameProvider) {
+  Widget _buildLeaderboardTable(
+      Size screenSize, bool isGameEnded, GameProvider gameProvider) {
     final players = gameProvider.players;
 
     return SingleChildScrollView(
@@ -276,32 +305,39 @@ class _HostScreenState extends State<HostScreen> {
               DataCell(
                 Text(
                   player.name,
-                  style: TextStyle(fontSize: screenSize.width * 0.008), // Reduced font size
+                  style: TextStyle(
+                      fontSize: screenSize.width * 0.008), // Reduced font size
                 ),
               ),
               DataCell(
                 Text(
                   '0', // Route points - would be calculated from routes built
-                  style: TextStyle(fontSize: screenSize.width * 0.008), // Reduced font size
+                  style: TextStyle(
+                      fontSize: screenSize.width * 0.008), // Reduced font size
                 ),
               ),
               DataCell(
                 Text(
                   '✗', // Longest road - would be calculated
-                  style: TextStyle(fontSize: screenSize.width * 0.008), // Reduced font size
+                  style: TextStyle(
+                      fontSize: screenSize.width * 0.008), // Reduced font size
                 ),
               ),
               if (isGameEnded) ...[
                 DataCell(
                   Text(
                     '0', // Destination points - would be calculated
-                    style: TextStyle(fontSize: screenSize.width * 0.008), // Reduced font size
+                    style: TextStyle(
+                        fontSize:
+                            screenSize.width * 0.008), // Reduced font size
                   ),
                 ),
                 DataCell(
                   Text(
                     '0', // Total points - would be calculated
-                    style: TextStyle(fontSize: screenSize.width * 0.008), // Reduced font size
+                    style: TextStyle(
+                        fontSize:
+                            screenSize.width * 0.008), // Reduced font size
                   ),
                 ),
               ],
@@ -314,7 +350,7 @@ class _HostScreenState extends State<HostScreen> {
 
   Widget _buildDeckRow(Size screenSize, GameProvider gameProvider) {
     final tableCards = gameProvider.tableCards;
-    
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: List.generate(6, (index) {
@@ -323,12 +359,14 @@ class _HostScreenState extends State<HostScreen> {
           final card = tableCards[index];
           return Expanded(
             child: Container(
-              margin: EdgeInsets.symmetric(horizontal: screenSize.width * 0.002),
+              margin:
+                  EdgeInsets.symmetric(horizontal: screenSize.width * 0.002),
               child: ElevatedButton(
                 onPressed: () {
                   // Take card from table
                   if (gameProvider.players.isNotEmpty) {
-                    gameProvider.playerTakeFromTable(gameProvider.players[0], index);
+                    gameProvider.playerTakeFromTable(
+                        gameProvider.players[0], index);
                   }
                 },
                 style: ElevatedButton.styleFrom(
@@ -358,7 +396,8 @@ class _HostScreenState extends State<HostScreen> {
           // Deck button
           return Expanded(
             child: Container(
-              margin: EdgeInsets.symmetric(horizontal: screenSize.width * 0.002),
+              margin:
+                  EdgeInsets.symmetric(horizontal: screenSize.width * 0.002),
               child: ElevatedButton(
                 onPressed: () {
                   // Draw from deck
@@ -403,7 +442,8 @@ class _HostScreenState extends State<HostScreen> {
           // Empty slot
           return Expanded(
             child: Container(
-              margin: EdgeInsets.symmetric(horizontal: screenSize.width * 0.002),
+              margin:
+                  EdgeInsets.symmetric(horizontal: screenSize.width * 0.002),
               child: Container(
                 decoration: BoxDecoration(
                   color: Colors.grey[300],
@@ -432,19 +472,19 @@ class _HostScreenState extends State<HostScreen> {
       // If no players exist, create a test player
       gameProvider.addPlayer('Test Player', Colors.red);
       gameProvider.addPlayer('Test Player 2', Colors.blue);
-      
+
       // Add some test destination cards
       final testDestinations = [
         Destination(from: 'Boston', to: 'Miami', points: 12),
         Destination(from: 'Los Angeles', to: 'New York', points: 21),
         Destination(from: 'Seattle', to: 'Los Angeles', points: 9),
       ];
-      
+
       // Add destinations to the first player
       if (gameProvider.players.isNotEmpty) {
         gameProvider.players[0].handOfDestinationCards.addAll(testDestinations);
       }
-      
+
       // Add some test train cards
       final testCards = [
         game_card.Card(type: game_card.CardType.red, isVisible: true),
@@ -457,12 +497,12 @@ class _HostScreenState extends State<HostScreen> {
         game_card.Card(type: game_card.CardType.pink, isVisible: true),
         game_card.Card(type: game_card.CardType.rainbow, isVisible: true),
       ];
-      
+
       // Add train cards to the first player
       if (gameProvider.players.isNotEmpty) {
         gameProvider.players[0].handOfCards.addAll(testCards);
       }
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Test player created with sample cards'),
@@ -470,7 +510,7 @@ class _HostScreenState extends State<HostScreen> {
         ),
       );
     }
-    
+
     // Navigate to the first player's screen
     Navigator.push(
       context,
@@ -481,5 +521,4 @@ class _HostScreenState extends State<HostScreen> {
       ),
     );
   }
-
 }

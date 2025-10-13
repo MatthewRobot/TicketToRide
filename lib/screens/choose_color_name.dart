@@ -17,12 +17,9 @@ class _ChooseColorNameState extends State<ChooseColorName> {
   final List<Color> _availableColors = [
     Colors.red,
     Colors.blue,
-    Colors.green,
-    Colors.yellow,
-    Colors.purple,
-    Colors.orange,
-    Colors.pink,
-    Colors.teal,
+    const Color.fromARGB(255, 68, 156, 71),
+    const Color.fromARGB(255, 154, 143, 44),
+    Colors.black,
   ];
 
   @override
@@ -165,32 +162,30 @@ class _ChooseColorNameState extends State<ChooseColorName> {
   }
 
   void _submit() {
-    if (_canSubmit()) {
-      final gameProvider = Provider.of<GameProvider>(context, listen: false);
-      
-      // Create the player
-      gameProvider.addPlayer(_nameController.text.trim(), _selectedColor!);
-      
-      // Show debug info
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Player ${_nameController.text.trim()} created. Navigating to destination selection...'),
-          duration: const Duration(seconds: 2),
+  if (_canSubmit()) {
+    final gameProvider = Provider.of<GameProvider>(context, listen: false);
+    final playerName = _nameController.text.trim();
+    final playerColor = _selectedColor!;
+    
+    // 1. Add the player (which calls saveGame() and updates state for everyone)
+    gameProvider.addPlayer(playerName, playerColor);
+    
+    // 2. Find the index of the player that was just added.
+    // This relies on the new player being the last in the *new* list.
+    // This is still slightly race-condition prone, but is the best simple approach 
+    // without using Firebase Authentication/UIDs for identification.
+    final playerIndex = gameProvider.players.length - 1; 
+
+    // Navigate to destination selection, passing the player's index
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChooseDestination(
+          isInitialSelection: true,
+          playerIndex: playerIndex, // <<< PASS THE INDEX
         ),
-      );
-      
-      // Navigate to destination selection
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const ChooseDestination(
-            isInitialSelection: true,
-          ),
-        ),
-      ).then((_) {
-        // After destination selection, the player will be on their player screen
-        // No additional navigation needed here
-      });
-    }
+      ),
+    );
   }
+}
 }
