@@ -40,10 +40,10 @@ class Player {
   }
 
   // Method to use a card (moves it to used pile)
-  void useCard(game_card.Card card, Deck deck) {
-    handOfCards.remove(card);
-    deck.addToUsedPile(card);
-  }
+  // void useCard(game_card.Card card, Deck deck) {
+  //   handOfCards.remove(card);
+  //   deck.addToUsedPile(card);
+  // }
 
   @override
   String toString() {

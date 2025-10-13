@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:ticket_to_ride/models/train_route.dart';
 import '../models/game_manager.dart';
 import '../models/player.dart';
 import '../models/card.dart' as game_card;
 import '../models/destination.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async'; // Add this for StreamSubscription
 
 class GameProvider extends ChangeNotifier {
   GameManager _gameManager = GameManager();
@@ -57,10 +60,27 @@ class GameProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void playerUseCard(Player player, game_card.Card card) {
-    _gameManager.playerUseCard(player, card);
+  // void playerUseCard(Player player, game_card.Card card) {
+  //   _gameManager.playerUseCard(player, card);
+  //   notifyListeners();
+  // }
+
+  bool placeRoute({
+  required int playerIndex,
+  required TrainRoute route,
+  required List<game_card.Card> cards,
+}) {
+  // Call the method on the underlying GameManager
+  final success = _gameManager.placeRoute(playerIndex, route, cards);
+  
+  if (success) {
+    // Notify all listening widgets (like PlayerScreen) to rebuild
+    // because the player's hand, trains, and route map have changed.
     notifyListeners();
   }
+  
+  return success;
+}
 
   // Player destination actions
   void playerDrawDestination(Player player) {

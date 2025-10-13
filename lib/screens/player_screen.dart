@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ticket_to_ride/models/train_route.dart';
 import '../providers/game_provider.dart';
 import '../models/destination.dart';
 import '../models/card.dart' as game_card;
@@ -7,7 +8,7 @@ import 'place_Route.dart';
 
 class PlayerScreen extends StatefulWidget {
   final int playerIndex;
-  
+
   const PlayerScreen({
     super.key,
     required this.playerIndex,
@@ -22,16 +23,16 @@ class _PlayerScreenState extends State<PlayerScreen> {
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
     final gameProvider = Provider.of<GameProvider>(context);
-    
+
     if (widget.playerIndex >= gameProvider.players.length) {
       return Scaffold(
         appBar: AppBar(title: const Text('Player Not Found')),
         body: const Center(child: Text('Player not found')),
       );
     }
-    
+
     final player = gameProvider.players[widget.playerIndex];
-    
+
     return Scaffold(
       appBar: AppBar(
         title: Text(player.name),
@@ -73,9 +74,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 ],
               ),
             ),
-            
+
             SizedBox(height: screenSize.height * 0.01),
-            
+
             // Test button for place route
             ElevatedButton(
               onPressed: () {
@@ -84,7 +85,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   MaterialPageRoute(
                     builder: (context) => PlaceRoute(
                       playerIndex: widget.playerIndex,
-                      routeInfo: 'Route: Boston → New York (3 segments, Red)',
+                      route: TrainRoute(
+                        id: 'BOS-NYC-R',
+                        fromId: 'Boston',
+                        toId: 'New York',
+                        length: 3,
+                        color: 'red', // Sample route'
+                      ),
                     ),
                   ),
                 );
@@ -92,16 +99,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue[600],
                 foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(vertical: screenSize.height * 0.01),
+                padding:
+                    EdgeInsets.symmetric(vertical: screenSize.height * 0.01),
               ),
               child: Text(
                 'Test Place Route',
                 style: TextStyle(fontSize: screenSize.width * 0.04),
               ),
             ),
-            
+
             SizedBox(height: screenSize.height * 0.02),
-            
+
             // Destination cards section
             Expanded(
               flex: 2,
@@ -122,15 +130,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 ],
               ),
             ),
-            
+
             // Divider
             // Divider(
             //   thickness: 2,
             //   color: Colors.grey[400],
             // ),
-            
+
             SizedBox(height: screenSize.height * 0.01),
-            
+
             // Train cards section
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -154,7 +162,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   Widget _buildDestinationCards(Size screenSize, player) {
     final destinations = player.handOfDestinationCards;
-    
+
     if (destinations.isEmpty) {
       return Center(
         child: Text(
@@ -166,7 +174,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         ),
       );
     }
-    
+
     return SingleChildScrollView(
       child: Wrap(
         spacing: screenSize.width * 0.02,
@@ -232,32 +240,51 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   Widget _buildTrainCards(Size screenSize, player) {
     final trainCards = player.handOfCards;
-    
+
     // Count cards by color
     final cardCounts = <game_card.CardType, int>{};
     for (final cardType in game_card.CardType.values) {
       cardCounts[cardType] = 0;
     }
-    
+
     for (final card in trainCards) {
       cardCounts[card.type] = (cardCounts[card.type] ?? 0) + 1;
     }
-    
+
     // Calculate card size to fit screen
-    final cardWidth = (screenSize.width - (screenSize.width * 0.06) - (4 * screenSize.width * 0.02)) / 3;
+    final cardWidth = (screenSize.width -
+            (screenSize.width * 0.06) -
+            (4 * screenSize.width * 0.02)) /
+        3;
     final cardHeight = cardWidth * 1.2;
-    
+
     return SizedBox(
-      height: cardHeight * 3 + (2 * screenSize.height * 0.01), // 3 rows + spacing
+      height:
+          cardHeight * 3 + (2 * screenSize.height * 0.01), // 3 rows + spacing
       child: Column(
         children: [
           // First row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildTrainCard(screenSize, game_card.CardType.red, cardCounts[game_card.CardType.red] ?? 0, cardWidth, cardHeight),
-              _buildTrainCard(screenSize, game_card.CardType.blue, cardCounts[game_card.CardType.blue] ?? 0, cardWidth, cardHeight),
-              _buildTrainCard(screenSize, game_card.CardType.green, cardCounts[game_card.CardType.green] ?? 0, cardWidth, cardHeight),
+              _buildTrainCard(
+                  screenSize,
+                  game_card.CardType.red,
+                  cardCounts[game_card.CardType.red] ?? 0,
+                  cardWidth,
+                  cardHeight),
+              _buildTrainCard(
+                  screenSize,
+                  game_card.CardType.blue,
+                  cardCounts[game_card.CardType.blue] ?? 0,
+                  cardWidth,
+                  cardHeight),
+              _buildTrainCard(
+                  screenSize,
+                  game_card.CardType.green,
+                  cardCounts[game_card.CardType.green] ?? 0,
+                  cardWidth,
+                  cardHeight),
             ],
           ),
           SizedBox(height: screenSize.height * 0.01),
@@ -265,9 +292,24 @@ class _PlayerScreenState extends State<PlayerScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildTrainCard(screenSize, game_card.CardType.yellow, cardCounts[game_card.CardType.yellow] ?? 0, cardWidth, cardHeight),
-              _buildTrainCard(screenSize, game_card.CardType.pink, cardCounts[game_card.CardType.pink] ?? 0, cardWidth, cardHeight),
-              _buildTrainCard(screenSize, game_card.CardType.white, cardCounts[game_card.CardType.white] ?? 0, cardWidth, cardHeight),
+              _buildTrainCard(
+                  screenSize,
+                  game_card.CardType.yellow,
+                  cardCounts[game_card.CardType.yellow] ?? 0,
+                  cardWidth,
+                  cardHeight),
+              _buildTrainCard(
+                  screenSize,
+                  game_card.CardType.pink,
+                  cardCounts[game_card.CardType.pink] ?? 0,
+                  cardWidth,
+                  cardHeight),
+              _buildTrainCard(
+                  screenSize,
+                  game_card.CardType.white,
+                  cardCounts[game_card.CardType.white] ?? 0,
+                  cardWidth,
+                  cardHeight),
             ],
           ),
           SizedBox(height: screenSize.height * 0.01),
@@ -275,9 +317,24 @@ class _PlayerScreenState extends State<PlayerScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildTrainCard(screenSize, game_card.CardType.orange, cardCounts[game_card.CardType.orange] ?? 0, cardWidth, cardHeight),
-              _buildTrainCard(screenSize, game_card.CardType.black, cardCounts[game_card.CardType.black] ?? 0, cardWidth, cardHeight),
-              _buildTrainCard(screenSize, game_card.CardType.rainbow, cardCounts[game_card.CardType.rainbow] ?? 0, cardWidth, cardHeight),
+              _buildTrainCard(
+                  screenSize,
+                  game_card.CardType.orange,
+                  cardCounts[game_card.CardType.orange] ?? 0,
+                  cardWidth,
+                  cardHeight),
+              _buildTrainCard(
+                  screenSize,
+                  game_card.CardType.black,
+                  cardCounts[game_card.CardType.black] ?? 0,
+                  cardWidth,
+                  cardHeight),
+              _buildTrainCard(
+                  screenSize,
+                  game_card.CardType.rainbow,
+                  cardCounts[game_card.CardType.rainbow] ?? 0,
+                  cardWidth,
+                  cardHeight),
             ],
           ),
         ],
@@ -285,9 +342,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 
-  Widget _buildTrainCard(Size screenSize, game_card.CardType cardType, int count, double cardWidth, double cardHeight) {
+  Widget _buildTrainCard(Size screenSize, game_card.CardType cardType,
+      int count, double cardWidth, double cardHeight) {
     final card = game_card.Card(type: cardType);
-    
+
     return Container(
       width: cardWidth,
       height: cardHeight,

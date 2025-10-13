@@ -4,7 +4,7 @@ import 'package:xml/xml.dart';
 import '../models/city_geometry.dart';
 import '../models/route_geometry.dart';
 import '../models/city.dart';
-import '../models/route.dart';
+import '../models/train_route.dart';
 
 class MapGeometryService {
   static Future<MapGeometryData> loadMapData() async {
@@ -21,10 +21,10 @@ class MapGeometryService {
       });
 
       // Parse routes from JSON
-      final routes = <Route>[];
+      final routes = <TrainRoute>[];
       final routesJson = jsonData['routes'] as List<dynamic>;
       for (final routeJson in routesJson) {
-        routes.add(Route.fromJson(routeJson));
+        routes.add(TrainRoute.fromJson(routeJson));
       }
 
       // Load SVG data
@@ -114,7 +114,7 @@ class MapGeometryService {
 
 class MapGeometryData {
   final Map<String, City> cities;
-  final List<Route> routes;
+  final List<TrainRoute> routes;
   final List<CityGeometry> cityGeometries;
   final List<RouteGeometry> routeGeometries;
   final double svgWidth;

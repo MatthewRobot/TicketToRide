@@ -6,7 +6,7 @@ import 'package:path_drawing/path_drawing.dart';
 import '../services/map_geometry_service.dart';
 import '../models/city_geometry.dart';
 import '../models/route_geometry.dart';
-import '../models/route.dart' as game_route;
+import '../models/train_route.dart' as game_route;
 
 class InteractiveMapWidget extends StatefulWidget {
   const InteractiveMapWidget({super.key});
@@ -169,7 +169,7 @@ class _InteractiveMapWidgetState extends State<InteractiveMapWidget> {
     } else if (type == 'Route') {
       final route = _mapData!.routes.firstWhere(
         (r) => r.id == id,
-        orElse: () => game_route.Route(
+        orElse: () => game_route.TrainRoute(
             id: '', fromId: '', toId: '', length: 0, color: ''),
       );
       if (route.id.isNotEmpty) {
