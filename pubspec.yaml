@@ -28,6 +28,8 @@ dependencies:
   
   # SVG Support
   flutter_svg: ^2.0.9
+  xml: ^6.4.2
+  path_drawing: ^1.0.1
 
 dev_dependencies:
   flutter_test:

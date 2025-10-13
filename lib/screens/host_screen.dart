@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:ticket_to_ride/widgets/interactive_map_widget.dart';
 import '../providers/game_provider.dart';
 import 'player_screen.dart';
 import '../models/destination.dart';
@@ -47,7 +48,7 @@ class _HostScreenState extends State<HostScreen> {
       body: Padding(
         padding: EdgeInsets.all(screenSize.width * 0.01),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch, // ⬅️ Optional, but good practice to ensure children fill height
+          crossAxisAlignment: CrossAxisAlignment.stretch, // ⬅️ IMPORTANT: Forces children to fill the Row's height
           children: [
             // Map Section - Use Expanded for full height and proportional width
             Expanded(
@@ -59,12 +60,12 @@ class _HostScreenState extends State<HostScreen> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8.0),
-                  child: SvgPicture.asset(
-                    'assets/images/map.svg',
-                    // The svg will now fill the Expanded widget's space
-                    fit: BoxFit.contain, // Ensures the SVG is as large as possible without cropping, keeping its proportions
-                    placeholderBuilder: (context) => const CircularProgressIndicator(),
-                  ),
+                  // child: SvgPicture.asset(
+                  //   'assets/images/map.svg',
+                  //   fit: BoxFit.contain, // The SVG will now scale up to the full height of the Expanded
+                  //   placeholderBuilder: (context) => const CircularProgressIndicator(),
+                  // ),
+                  child: const InteractiveMapWidget(), // Replace static SVG with the interactive widget
                 ),
               ),
             ),
