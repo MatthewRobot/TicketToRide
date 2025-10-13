@@ -1,5 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart'; // NEW IMPORT
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // For clipboard
 import 'package:provider/provider.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:ticket_to_ride/widgets/interactive_map_widget.dart';
@@ -7,7 +8,6 @@ import '../providers/game_provider.dart';
 import 'player_screen.dart';
 import '../models/destination.dart';
 import '../models/card.dart' as game_card;
-import 'package:cloud_firestore/cloud_firestore.dart'; // <<< ADD THIS IMPORT
 
 class HostScreen extends StatefulWidget {
   const HostScreen({super.key});
@@ -17,6 +17,52 @@ class HostScreen extends StatefulWidget {
 }
 
 class _HostScreenState extends State<HostScreen> {
+  String? _displayedGameId; // Store the game ID
+  bool _isInitializing = false; // Track initialization
+
+  @override
+  void initState() {
+    super.initState();
+    // Automatically create game when screen loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _createGameIfNeeded();
+    });
+  }
+
+  void _createGameIfNeeded() async {
+    final gameProvider = Provider.of<GameProvider>(context, listen: false);
+    
+    // Only create if we don't have a game ID yet
+    if (_displayedGameId == null && !_isInitializing) {
+      setState(() {
+        _isInitializing = true;
+      });
+      
+      // Create game without test players
+      final newGameRef = FirebaseFirestore.instance.collection('games').doc();
+      final gameId = newGameRef.id;
+
+      await gameProvider.connectToGame(gameId);
+      
+      // Don't initialize test game - just mark as initialized
+      // gameProvider.initializeTestGame(); // Comment this out for real MVP
+      
+      setState(() {
+        _displayedGameId = gameId;
+        _isInitializing = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Game ID: $gameId. Share this with players!'),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
+  }
+
   void _startNewGame(BuildContext context, GameProvider gameProvider) async {
     // 1. Get a unique ID from Firestore without creating the document yet
     final newGameRef = FirebaseFirestore.instance.collection('games').doc();
@@ -28,7 +74,12 @@ class _HostScreenState extends State<HostScreen> {
     // 3. Initialize the game state (this calls initializeTestGame, which now calls saveGame())
     gameProvider.initializeTestGame();
 
-    // 4. Display the ID for players to join
+    // 4. Store and display the ID
+    setState(() {
+      _displayedGameId = gameId;
+    });
+
+    // 5. Display the ID for players to join
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Game ID: $gameId. Share this with players!'),
@@ -37,24 +88,219 @@ class _HostScreenState extends State<HostScreen> {
     );
   }
 
+  void _copyGameId() {
+    if (_displayedGameId != null) {
+      Clipboard.setData(ClipboardData(text: _displayedGameId!));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Game ID copied to clipboard!'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
     final gameProvider = Provider.of<GameProvider>(context);
     final isGameEnded = false; // This would be controlled by game state
+
+    // Show loading while initializing
+    if (_isInitializing) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Host Game'),
+          centerTitle: true,
+          backgroundColor: Colors.blue[800],
+          foregroundColor: Colors.white,
+        ),
+        body: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 20),
+              Text(
+                'Creating game...',
+                style: TextStyle(fontSize: 18),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (!gameProvider.gameStarted) {
-      return Scaffold( // Wrap the button in a Scaffold for proper display
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Host Game'),
+          centerTitle: true,
+          backgroundColor: Colors.blue[800],
+          foregroundColor: Colors.white,
+        ),
         body: Center(
-          child: ElevatedButton(
-            onPressed:
-                gameProvider.players.length >= 2 // Example: require 2 players
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Game ID Display (if available)
+              if (_displayedGameId != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  margin: const EdgeInsets.symmetric(horizontal: 32),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[100],
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.blue[300]!, width: 3),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        'Game ID',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue[900],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blue[200]!),
+                        ),
+                        child: Text(
+                          _displayedGameId!,
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue[700],
+                            letterSpacing: 2,
+                            fontFamily: 'monospace',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: _copyGameId,
+                        icon: const Icon(Icons.copy),
+                        label: const Text('Copy Game ID'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue[600],
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Share this ID with players to join',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 32),
+              ],
+
+              // Player List
+              if (gameProvider.players.isNotEmpty) ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  margin: const EdgeInsets.symmetric(horizontal: 32),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        'Players (${gameProvider.players.length})',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ...gameProvider.players.map((player) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: 20,
+                                height: 20,
+                                decoration: BoxDecoration(
+                                  color: player.color,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.black,
+                                    width: 1,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                player.name,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 32),
+              ],
+
+              // Start Game Button
+              ElevatedButton(
+                onPressed: gameProvider.players.length >= 2
                     ? () {
-                        gameProvider
-                            .startGame(); // This sets gameStarted=true, deals initial train cards, and calls saveGame()
-                        // Optional: navigate to the Host's PlayerScreen if the Host is also playing
+                        gameProvider.startGame();
                       }
                     : null,
-            child: const Text('START GAME'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green[600],
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 48,
+                    vertical: 20,
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                child: const Text('START GAME'),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                gameProvider.players.length < 2
+                    ? 'Waiting for at least 2 players...'
+                    : 'Ready to start!',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 14,
+                ),
+              ),
+            ],
           ),
         ),
       );
@@ -69,9 +315,12 @@ class _HostScreenState extends State<HostScreen> {
             IconButton(
               icon: const Icon(Icons.refresh),
               onPressed: () {
+                // Reset and create a new test game with 4 players
+                gameProvider.resetGame();
+                _displayedGameId = null;
                 _startNewGame(context, gameProvider);
               },
-              tooltip: 'Initialize Test Game',
+              tooltip: 'New Test Game (4 Players)',
             ),
             IconButton(
               icon: const Icon(Icons.person),
@@ -84,151 +333,197 @@ class _HostScreenState extends State<HostScreen> {
         ),
         body: Padding(
           padding: EdgeInsets.all(screenSize.width * 0.01),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment
-                .stretch, // ⬅️ IMPORTANT: Forces children to fill the Row's height
+          child: Column(
             children: [
-              // Map Section - Use Expanded for full height and proportional width
-              Expanded(
-                flex: 69, // Proportional to your desired 69% width
-                child: Container(
+              // Game ID Display at top (permanent)
+              if (_displayedGameId != null)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 8),
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey),
-                    borderRadius: BorderRadius.circular(8.0),
+                    color: Colors.blue[100],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue[300]!, width: 2),
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8.0),
-                    // child: SvgPicture.asset(
-                    //   'assets/images/map.svg',
-                    //   fit: BoxFit.contain, // The SVG will now scale up to the full height of the Expanded
-                    //   placeholderBuilder: (context) => const CircularProgressIndicator(),
-                    // ),
-                    child:
-                        const InteractiveMapWidget(), // Replace static SVG with the interactive widget
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Game ID:',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue[900],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _displayedGameId!,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue[700],
+                              letterSpacing: 1.5,
+                              fontFamily: 'monospace',
+                            ),
+                          ),
+                        ],
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: _copyGameId,
+                        icon: const Icon(Icons.copy, size: 16),
+                        label: const Text('Copy'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue[600],
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
 
-              SizedBox(width: screenSize.width * 0.01), // Spacer
-
-              // Sidebar - Use Expanded for full height and proportional width
+              // Main game area
               Expanded(
-                flex: 28, // Proportional to your desired 28% width
-                child: Column(
-                  // The Column inside the Expanded will now correctly use the full height.
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Leaderboard Section
+                    // Map Section
                     Expanded(
-                      flex: 2,
+                      flex: 69,
                       child: Container(
-                        padding: EdgeInsets.all(screenSize.width * 0.01),
                         decoration: BoxDecoration(
-                          color: Colors.grey[100],
                           border: Border.all(color: Colors.grey),
                           borderRadius: BorderRadius.circular(8.0),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Leaderboard (${gameProvider.players.length} players)',
-                              style: TextStyle(
-                                fontSize: screenSize.width * 0.02,
-                                fontWeight: FontWeight.bold,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8.0),
+                          child: const InteractiveMapWidget(),
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(width: screenSize.width * 0.01),
+
+                    // Sidebar
+                    Expanded(
+                      flex: 28,
+                      child: Column(
+                        children: [
+                          // Leaderboard Section
+                          Expanded(
+                            flex: 2,
+                            child: Container(
+                              padding: EdgeInsets.all(screenSize.width * 0.01),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[100],
+                                border: Border.all(color: Colors.grey),
+                                borderRadius: BorderRadius.circular(8.0),
                               ),
-                            ),
-                            SizedBox(height: screenSize.height * 0.01),
-                            if (gameProvider.players.isEmpty)
-                              Center(
-                                child: Text(
-                                  'Click refresh to initialize test game',
-                                  style: TextStyle(
-                                    fontSize: screenSize.width * 0.012,
-                                    color: Colors.grey[600],
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Leaderboard (${gameProvider.players.length} players)',
+                                    style: TextStyle(
+                                      fontSize: screenSize.width * 0.02,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
+                                  SizedBox(height: screenSize.height * 0.01),
+                                  if (gameProvider.players.isEmpty)
+                                    Center(
+                                      child: Text(
+                                        'Click refresh to initialize test game',
+                                        style: TextStyle(
+                                          fontSize: screenSize.width * 0.012,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    Expanded(
+                                      child: _buildLeaderboardTable(
+                                          screenSize, isGameEnded, gameProvider),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          SizedBox(height: screenSize.height * 0.01),
+
+                          // Destination Drawing Button
+                          Container(
+                            margin: EdgeInsets.symmetric(
+                                horizontal: screenSize.width * 0.01),
+                            child: ElevatedButton(
+                              onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        'Destination selection will appear on player devices'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green[600],
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(
+                                  vertical: screenSize.height * 0.015,
                                 ),
-                              )
-                            else
-                              Expanded(
-                                child: _buildLeaderboardTable(
-                                    screenSize, isGameEnded, gameProvider),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
                               ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: screenSize.height * 0.01),
-
-                    // Destination Drawing Button
-                    Container(
-                      margin: EdgeInsets.symmetric(
-                          horizontal: screenSize.width * 0.01),
-                      child: ElevatedButton(
-                        onPressed: () {
-                          // This would trigger destination selection on player devices
-                          // For now, show a message about how this would work
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                  'Destination selection will appear on player devices'),
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
-
-                          // In a real implementation, this would:
-                          // 1. Send a signal to all player devices
-                          // 2. Each player device would show the destination selection screen
-                          // 3. Host screen would remain visible to all players
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green[600],
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(
-                            vertical: screenSize.height * 0.015,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: Text(
-                          'Draw Destinations',
-                          style: TextStyle(
-                            fontSize: screenSize.width * 0.015,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: screenSize.height * 0.01),
-
-                    // Deck Section
-                    Expanded(
-                      flex: 1,
-                      child: Container(
-                        padding: EdgeInsets.all(screenSize.width * 0.01),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          border: Border.all(color: Colors.grey),
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Deck',
-                              style: TextStyle(
-                                fontSize: screenSize.width * 0.02,
-                                fontWeight: FontWeight.bold,
+                              child: Text(
+                                'Draw Destinations',
+                                style: TextStyle(
+                                  fontSize: screenSize.width * 0.015,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
-                            SizedBox(height: screenSize.height * 0.01),
-                            Expanded(
-                              child: _buildDeckRow(screenSize, gameProvider),
+                          ),
+
+                          SizedBox(height: screenSize.height * 0.01),
+
+                          // Deck Section
+                          Expanded(
+                            flex: 1,
+                            child: Container(
+                              padding: EdgeInsets.all(screenSize.width * 0.01),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[100],
+                                border: Border.all(color: Colors.grey),
+                                borderRadius: BorderRadius.circular(8.0),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Deck',
+                                    style: TextStyle(
+                                      fontSize: screenSize.width * 0.02,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  SizedBox(height: screenSize.height * 0.01),
+                                  Expanded(
+                                    child:
+                                        _buildDeckRow(screenSize, gameProvider),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -247,9 +542,9 @@ class _HostScreenState extends State<HostScreen> {
 
     return SingleChildScrollView(
       child: DataTable(
-        columnSpacing: screenSize.width * 0.005, // Reduced spacing
-        headingRowHeight: screenSize.height * 0.035, // Reduced height
-        dataRowHeight: screenSize.height * 0.04, // Reduced height
+        columnSpacing: screenSize.width * 0.005,
+        headingRowHeight: screenSize.height * 0.035,
+        dataRowHeight: screenSize.height * 0.04,
         columns: [
           DataColumn(
             label: Expanded(
@@ -257,7 +552,7 @@ class _HostScreenState extends State<HostScreen> {
                 'Name',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: screenSize.width * 0.01, // Reduced font size
+                  fontSize: screenSize.width * 0.01,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -266,10 +561,10 @@ class _HostScreenState extends State<HostScreen> {
           DataColumn(
             label: Expanded(
               child: Text(
-                'Pts', // Shorter header
+                'Pts',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: screenSize.width * 0.01, // Reduced font size
+                  fontSize: screenSize.width * 0.01,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -278,10 +573,10 @@ class _HostScreenState extends State<HostScreen> {
           DataColumn(
             label: Expanded(
               child: Text(
-                'Longest', // Shorter header
+                'Longest',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: screenSize.width * 0.01, // Reduced font size
+                  fontSize: screenSize.width * 0.01,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -291,10 +586,10 @@ class _HostScreenState extends State<HostScreen> {
             DataColumn(
               label: Expanded(
                 child: Text(
-                  'Dest', // Shorter header
+                  'Dest',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: screenSize.width * 0.01, // Reduced font size
+                    fontSize: screenSize.width * 0.01,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -303,10 +598,10 @@ class _HostScreenState extends State<HostScreen> {
             DataColumn(
               label: Expanded(
                 child: Text(
-                  'Total', // Shorter header
+                  'Total',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: screenSize.width * 0.01, // Reduced font size
+                    fontSize: screenSize.width * 0.01,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -320,39 +615,32 @@ class _HostScreenState extends State<HostScreen> {
               DataCell(
                 Text(
                   player.name,
-                  style: TextStyle(
-                      fontSize: screenSize.width * 0.008), // Reduced font size
+                  style: TextStyle(fontSize: screenSize.width * 0.008),
                 ),
               ),
               DataCell(
                 Text(
-                  '0', // Route points - would be calculated from routes built
-                  style: TextStyle(
-                      fontSize: screenSize.width * 0.008), // Reduced font size
+                  '0',
+                  style: TextStyle(fontSize: screenSize.width * 0.008),
                 ),
               ),
               DataCell(
                 Text(
-                  '✗', // Longest road - would be calculated
-                  style: TextStyle(
-                      fontSize: screenSize.width * 0.008), // Reduced font size
+                  '✗',
+                  style: TextStyle(fontSize: screenSize.width * 0.008),
                 ),
               ),
               if (isGameEnded) ...[
                 DataCell(
                   Text(
-                    '0', // Destination points - would be calculated
-                    style: TextStyle(
-                        fontSize:
-                            screenSize.width * 0.008), // Reduced font size
+                    '0',
+                    style: TextStyle(fontSize: screenSize.width * 0.008),
                   ),
                 ),
                 DataCell(
                   Text(
-                    '0', // Total points - would be calculated
-                    style: TextStyle(
-                        fontSize:
-                            screenSize.width * 0.008), // Reduced font size
+                    '0',
+                    style: TextStyle(fontSize: screenSize.width * 0.008),
                   ),
                 ),
               ],
@@ -369,7 +657,6 @@ class _HostScreenState extends State<HostScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: List.generate(6, (index) {
-        // Show table cards (first 5) and deck (6th button)
         if (index < 5 && index < tableCards.length) {
           final card = tableCards[index];
           return Expanded(
@@ -378,7 +665,6 @@ class _HostScreenState extends State<HostScreen> {
                   EdgeInsets.symmetric(horizontal: screenSize.width * 0.002),
               child: ElevatedButton(
                 onPressed: () {
-                  // Take card from table
                   if (gameProvider.players.isNotEmpty) {
                     gameProvider.takeCardFromTable(
                         gameProvider.currentPlayerIndex, index);
@@ -415,9 +701,9 @@ class _HostScreenState extends State<HostScreen> {
                   EdgeInsets.symmetric(horizontal: screenSize.width * 0.002),
               child: ElevatedButton(
                 onPressed: () {
-                  // Draw from deck
                   if (gameProvider.players.isNotEmpty) {
-                    gameProvider.drawCardFromDeck(gameProvider.currentPlayerIndex);
+                    gameProvider.drawCardFromDeck(
+                        gameProvider.currentPlayerIndex);
                   }
                 },
                 style: ElevatedButton.styleFrom(
@@ -484,23 +770,19 @@ class _HostScreenState extends State<HostScreen> {
 
   void _testPlayerScreen(BuildContext context, GameProvider gameProvider) {
     if (gameProvider.players.isEmpty) {
-      // If no players exist, create a test player
       gameProvider.addPlayer('Test Player', Colors.red);
       gameProvider.addPlayer('Test Player 2', Colors.blue);
 
-      // Add some test destination cards
       final testDestinations = [
         Destination(from: 'Boston', to: 'Miami', points: 12),
         Destination(from: 'Los Angeles', to: 'New York', points: 21),
         Destination(from: 'Seattle', to: 'Los Angeles', points: 9),
       ];
 
-      // Add destinations to the first player
       if (gameProvider.players.isNotEmpty) {
         gameProvider.players[0].handOfDestinationCards.addAll(testDestinations);
       }
 
-      // Add some test train cards
       final testCards = [
         game_card.Card(type: game_card.CardType.red, isVisible: true),
         game_card.Card(type: game_card.CardType.red, isVisible: true),
@@ -513,7 +795,6 @@ class _HostScreenState extends State<HostScreen> {
         game_card.Card(type: game_card.CardType.rainbow, isVisible: true),
       ];
 
-      // Add train cards to the first player
       if (gameProvider.players.isNotEmpty) {
         gameProvider.players[0].handOfCards.addAll(testCards);
       }
@@ -526,11 +807,10 @@ class _HostScreenState extends State<HostScreen> {
       );
     }
 
-    // Navigate to the first player's screen
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => PlayerScreen(
+        builder: (context) => const PlayerScreen(
           playerIndex: 0,
         ),
       ),
