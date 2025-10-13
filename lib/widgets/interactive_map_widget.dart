@@ -56,9 +56,9 @@ class _InteractiveMapWidgetState extends State<InteractiveMapWidget> {
     final centeredTranslateX = (widgetSize.width - mapData.svgWidth * scale) / 2;
     final centeredTranslateY = (widgetSize.height - mapData.svgHeight * scale) / 2;
     
-    // 2. Adjust translation by the scaled ViewBox minimums (the fix!)
-    final translateX = centeredTranslateX + mapData.svgMinX * scale;
-    final translateY = centeredTranslateY + mapData.svgMinY * scale;
+    // 2. Adjust translation by the scaled ViewBox minimums (+- makes no difference becuase view box is 0 0 x y)
+    final translateX = centeredTranslateX - mapData.svgMinX * scale;
+    final translateY = centeredTranslateY - mapData.svgMinY * scale;
 
     // Create transformation matrix: M_Final = M_T × M_S (Translate → Scale)
     final matrix = Matrix4.identity()
