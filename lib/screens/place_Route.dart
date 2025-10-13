@@ -6,12 +6,12 @@ import 'package:ticket_to_ride/models/train_route.dart';
 
 class PlaceRoute extends StatefulWidget {
   final int playerIndex;
-  final TrainRoute route; // Use the Route object
+  final TrainRoute route;
 
   const PlaceRoute({
     super.key,
     required this.playerIndex,
-    required this.route, // Route must be provided
+    required this.route,
   });
 
   @override
@@ -33,7 +33,6 @@ class _PlaceRouteState extends State<PlaceRoute> {
     requiredColor = widget.route.requiredCardType;
     requiredCount = widget.route.length;
 
-    // Initialize selected cards
     for (final cardType in game_card.CardType.values) {
       selectedCards[cardType] = 0;
     }
@@ -45,7 +44,7 @@ class _PlaceRouteState extends State<PlaceRoute> {
     final gameProvider = Provider.of<GameProvider>(context);
 
     if (widget.playerIndex >= gameProvider.players.length) {
-      return Scaffold(
+      return const Scaffold(
         body: Center(child: Text('Player not found')),
       );
     }
@@ -53,7 +52,6 @@ class _PlaceRouteState extends State<PlaceRoute> {
     final player = gameProvider.players[widget.playerIndex];
     final playerCards = player.handOfCards;
 
-    // Count available cards
     final availableCards = <game_card.CardType, int>{};
     for (final cardType in game_card.CardType.values) {
       availableCards[cardType] = 0;
@@ -63,7 +61,6 @@ class _PlaceRouteState extends State<PlaceRoute> {
       availableCards[card.type] = (availableCards[card.type] ?? 0) + 1;
     }
 
-    // Create a display string from the TrainRoute object
     final routeDisplayInfo =
         'Route: ${widget.route.fromId} → ${widget.route.toId} ' +
             '(${widget.route.length} segments, ${widget.route.color.toUpperCase()})';
@@ -76,7 +73,6 @@ class _PlaceRouteState extends State<PlaceRoute> {
           children: [
             SizedBox(height: screenSize.height * 0.05),
 
-            // Route information
             Container(
               padding: EdgeInsets.all(screenSize.width * 0.04),
               decoration: BoxDecoration(
@@ -97,7 +93,6 @@ class _PlaceRouteState extends State<PlaceRoute> {
 
             SizedBox(height: screenSize.height * 0.03),
 
-            // Instructions
             Text(
               'Select train cards to place route:',
               style: TextStyle(
@@ -109,19 +104,16 @@ class _PlaceRouteState extends State<PlaceRoute> {
 
             SizedBox(height: screenSize.height * 0.02),
 
-            // Train cards selection
             Expanded(
               child: _buildTrainCardSelection(screenSize, availableCards),
             ),
 
             SizedBox(height: screenSize.height * 0.02),
 
-            // Selected cards summary
             _buildSelectedCardsSummary(screenSize),
 
             SizedBox(height: screenSize.height * 0.02),
 
-            // Action buttons
             Row(
               children: [
                 Expanded(
@@ -195,7 +187,6 @@ class _PlaceRouteState extends State<PlaceRoute> {
         final selected = selectedCards[cardType] ?? 0;
         final card = game_card.Card(type: cardType);
 
-        // Check if this card type can be selected
         final canSelect = _canSelectCardType(cardType);
 
         return Container(
@@ -327,13 +318,8 @@ class _PlaceRouteState extends State<PlaceRoute> {
   }
 
   bool _canSelectCardType(game_card.CardType cardType) {
-    // 1. Rainbow cards can always be selected
     if (cardType == game_card.CardType.rainbow) return true;
-
-    // 2. The *other* color card that can be selected.
     if (cardType == requiredColor) return true;
-
-    // 3. No other colors can be selected
     return false;
   }
 
@@ -351,17 +337,14 @@ class _PlaceRouteState extends State<PlaceRoute> {
     });
   }
 
-  // Inside _PlaceRouteState:
-
   bool _canPlaceRoute() {
     final totalSelected =
         selectedCards.values.fold(0, (sum, count) => sum + count);
 
     if (totalSelected != requiredCount) {
-      return false; // Must select the exact number of cards
+      return false;
     }
 
-    // Check that all non-rainbow cards are of the required color
     int nonRainbowCards = 0;
     game_card.CardType? chosenColor;
 
@@ -370,66 +353,54 @@ class _PlaceRouteState extends State<PlaceRoute> {
         if (chosenColor == null) {
           chosenColor = entry.key;
         } else if (chosenColor != entry.key) {
-          // Player selected two different non-rainbow colors
           return false;
         }
         nonRainbowCards += entry.value;
       }
     }
 
-    // Check if the chosen color is valid for the route
     if (chosenColor != null &&
         requiredColor != null &&
         chosenColor != requiredColor) {
-      // If the route has a color (not grey) but the chosen non-rainbow card doesn't match
       return false;
     }
 
-    // For 'grey' routes (requiredColor is null), all non-rainbow cards must be of the *same* color.
-    // The logic above ensures this by setting chosenColor.
-
-    // The selection is valid if the total count is correct, and all non-rainbow cards
-    // are of a single, valid color (or if only Rainbow cards were used).
     return true;
   }
 
-  // Inside _PlaceRouteState:
+  // FIXED: Made async and properly handle the Future<bool> return
   void _placeRoute() async {
-    if (_canPlaceRoute()) {
-      final gameProvider = Provider.of<GameProvider>(context, listen: false);
+    if (!_canPlaceRoute()) return;
 
-      // 1. Get the list of cards to use
-      List<game_card.Card> cardsToUse = [];
-      for (final entry in selectedCards.entries) {
-        final cardType = entry.key;
-        final count = entry.value;
+    final gameProvider = Provider.of<GameProvider>(context, listen: false);
 
-        // Get the *actual* cards from the player's hand
-        final playerHand = gameProvider.players[widget.playerIndex].handOfCards;
+    List<game_card.Card> cardsToUse = [];
+    for (final entry in selectedCards.entries) {
+      final cardType = entry.key;
+      final count = entry.value;
 
-        for (int i = 0; i < count; i++) {
-          // Find and remove the card from the player's hand for collection
-          final cardIndex =
-              playerHand.indexWhere((card) => card.type == cardType);
-          if (cardIndex != -1) {
-            cardsToUse.add(playerHand.removeAt(cardIndex));
-          } else {
-            // This should not happen if _canPlaceRoute and availableCards were correct
-            return;
-          }
+      final playerHand = gameProvider.players[widget.playerIndex].handOfCards;
+
+      for (int i = 0; i < count; i++) {
+        final cardIndex =
+            playerHand.indexWhere((card) => card.type == cardType);
+        if (cardIndex != -1) {
+          cardsToUse.add(playerHand.removeAt(cardIndex));
+        } else {
+          return;
         }
       }
+    }
 
-      // 2. Call the new method on GameManager
-      final success = await gameProvider.placeRoute(
-        // <--- FIX: Add await
-        playerIndex: widget.playerIndex,
-        route: widget.route,
-        cards: cardsToUse,
-      );
+    // FIXED: Added await and properly check boolean result
+    final success = await gameProvider.placeRoute(
+      playerIndex: widget.playerIndex,
+      route: widget.route,
+      cards: cardsToUse,
+    );
 
+    if (mounted) {
       if (success) {
-        //error Conditions must have a static type of 'bool'.
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Route placed successfully!'),
@@ -437,14 +408,11 @@ class _PlaceRouteState extends State<PlaceRoute> {
         );
         Navigator.of(context).pop();
       } else {
-        // Handle error (e.g., trains limit reached, route already claimed)
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Failed to place route.'),
           ),
         );
-        // If failed, you might need to revert the cards removed from the hand.
-        // Better to handle the full removal within the successful GameManager call.
       }
     }
   }
