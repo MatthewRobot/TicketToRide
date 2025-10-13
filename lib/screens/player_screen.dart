@@ -23,6 +23,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
     final gameProvider = Provider.of<GameProvider>(context);
+    final player = gameProvider.players[widget.playerIndex];
+    final isMyTurn = widget.playerIndex == gameProvider.currentPlayerIndex;
+    final isGameOver = gameProvider.isGameOver;
 
     if (widget.playerIndex >= gameProvider.players.length) {
       return Scaffold(
@@ -30,8 +33,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
         body: const Center(child: Text('Player not found')),
       );
     }
-
-    final player = gameProvider.players[widget.playerIndex];
 
     return Scaffold(
       appBar: AppBar(
@@ -46,6 +47,22 @@ class _PlayerScreenState extends State<PlayerScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              color: isMyTurn ? Colors.green.shade700 : Colors.red.shade700,
+              child: Text(
+                isGameOver
+                    ? 'GAME OVER! Awaiting Final Scores.'
+                    : isMyTurn
+                        ? 'YOUR TURN! Await Host Action.'
+                        : 'Waiting for ${gameProvider.players[gameProvider.currentPlayerIndex].name}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16),
+              ),
+            ),
             // Number of trains
             Container(
               padding: EdgeInsets.all(screenSize.width * 0.03),

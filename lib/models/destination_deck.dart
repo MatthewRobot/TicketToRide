@@ -74,8 +74,8 @@ class DestinationDeck {
   }
 
   // Add a destination to the used pile
-  void addToUsedPile(Destination destination) {
-    _usedPile.add(destination);
+  void addToUsedPile(List<Destination> destinations) {
+    _usedPile.addAll(destinations);
   }
 
   // Reshuffle used pile back into stack

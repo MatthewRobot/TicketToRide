@@ -9,6 +9,7 @@ class Player {
   int numberOfTrains;
   List<game_card.Card> handOfCards;
   List<Destination> handOfDestinationCards;
+  int score;
 
   Player({
     required this.name,
@@ -16,13 +17,14 @@ class Player {
     this.numberOfTrains = 45,
     List<game_card.Card>? handOfCards,
     List<Destination>? handOfDestinationCards,
-  }) : handOfCards = handOfCards ?? [],
-       handOfDestinationCards = handOfDestinationCards ?? [];
+    this.score = 0,
+  })  : handOfCards = handOfCards ?? [],
+        handOfDestinationCards = handOfDestinationCards ?? [];
 
   // Method to draw 2 cards (or 1 if rainbow card taken from table)
   void drawCards(Deck deck, {bool rainbowFromTable = false}) {
     int cardsToDraw = rainbowFromTable ? 1 : 2;
-    
+
     for (int i = 0; i < cardsToDraw; i++) {
       game_card.Card? card = deck.drawCard();
       if (card != null) {
@@ -57,7 +59,8 @@ class Player {
       'color': color.value,
       'numberOfTrains': numberOfTrains,
       'handOfCards': handOfCards.map((c) => c.toFirebase()).toList(),
-      'handOfDestinationCards': handOfDestinationCards.map((c) => c.toFirebase()).toList(),
+      'handOfDestinationCards':
+          handOfDestinationCards.map((c) => c.toFirebase()).toList(),
     };
   }
 

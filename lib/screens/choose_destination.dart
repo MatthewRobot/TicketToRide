@@ -230,27 +230,49 @@ class _ChooseDestinationState extends State<ChooseDestination> {
     }
   }
 
-  void _submit() {
+  void _submit() async { // Needs to be async because it calls async methods
   if (_canSubmit() && widget.playerIndex != null) {
     final gameProvider = Provider.of<GameProvider>(context, listen: false);
+
+    if (widget.playerIndex! >= gameProvider.players.length) {
+        // Handle error: Player not found at index
+        return;
+    }
     
-    if (widget.playerIndex! < gameProvider.players.length) {
-      // Use the *provided index* to identify the player
-      final player = gameProvider.players[widget.playerIndex!]; 
-      
-      // Add selected destinations to this specific player
-      gameProvider.addSelectedDestinations(player, _selectedDestinations);
-      
-      // Navigate to player screen, using the same index
+    // Define player once for both initial and mid-game logic
+    final player = gameProvider.players[widget.playerIndex!]; 
+    
+    // Prepare the cards that were *not* selected
+    // Note: This requires getting the full list of cards dealt in _loadDestinations, 
+    // and subtracting the selected ones. For now, we assume _availableDestinations 
+    // holds the full dealt set.
+    final unselectedDestinations = _availableDestinations.where(
+      (d) => !_selectedDestinations.contains(d)
+    ).toList();
+
+
+    if (widget.isInitialSelection) {
+      // 1. Initial Setup: No turn ends, just setup player hand and return cards
+      await gameProvider.addSelectedDestinationsSetup(
+          player, _selectedDestinations, unselectedDestinations); 
+
+      // Navigate to the player screen
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
           builder: (context) => PlayerScreen(
-            playerIndex: widget.playerIndex!, // <<< USE THE INDEX
+            playerIndex: widget.playerIndex!,
           ),
         ),
         (route) => false,
       );
+    } else {
+      // 2. Mid-Game Turn: Turn ends after selection
+      await gameProvider.completeDestinationSelection(
+          player, _selectedDestinations, unselectedDestinations); 
+
+      // Pop back to the map/player view
+      Navigator.of(context).pop(); 
     }
     
     // Show confirmation
@@ -262,12 +284,12 @@ class _ChooseDestinationState extends State<ChooseDestination> {
       ),
     );
   } else {
-    // Handle error if index is missing (e.g., initial join failed)
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Error: Player identity lost. Please rejoin.'),
-      ),
-    );
+      // Handle error if index is missing (e.g., initial join failed)
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error: Player identity lost. Please rejoin.'),
+        ),
+      );
+    }
   }
-}
 }

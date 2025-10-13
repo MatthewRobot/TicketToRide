@@ -13,7 +13,7 @@ class ChooseColorName extends StatefulWidget {
 class _ChooseColorNameState extends State<ChooseColorName> {
   final TextEditingController _nameController = TextEditingController();
   Color? _selectedColor;
-  
+
   final List<Color> _availableColors = [
     Colors.red,
     Colors.blue,
@@ -31,7 +31,7 @@ class _ChooseColorNameState extends State<ChooseColorName> {
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Choose Color & Name'),
@@ -45,7 +45,7 @@ class _ChooseColorNameState extends State<ChooseColorName> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SizedBox(height: screenSize.height * 0.02),
-            
+
             // Choose Name Section
             Text(
               'Choose Name',
@@ -55,7 +55,7 @@ class _ChooseColorNameState extends State<ChooseColorName> {
               ),
             ),
             SizedBox(height: screenSize.height * 0.02),
-            
+
             // Name Input Field
             TextField(
               controller: _nameController,
@@ -71,9 +71,9 @@ class _ChooseColorNameState extends State<ChooseColorName> {
               ),
               style: TextStyle(fontSize: screenSize.width * 0.04),
             ),
-            
+
             SizedBox(height: screenSize.height * 0.04),
-            
+
             // Choose Color Section
             Text(
               'Choose Color',
@@ -83,51 +83,52 @@ class _ChooseColorNameState extends State<ChooseColorName> {
               ),
             ),
             SizedBox(height: screenSize.height * 0.02),
-            
+
             // Color Selection Grid
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
-                crossAxisSpacing: screenSize.width * 0.02,
-                mainAxisSpacing: screenSize.height * 0.01,
-                childAspectRatio: 1.2,
-              ),
-              itemCount: _availableColors.length,
-              itemBuilder: (context, index) {
-                final color = _availableColors[index];
-                final isSelected = _selectedColor == color;
-                
-                return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _selectedColor = color;
-                    });
-                  },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: color,
-                      border: Border.all(
-                        color: isSelected ? Colors.black : Colors.grey,
-                        width: isSelected ? 3 : 1,
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: isSelected
-                        ? const Icon(
-                            Icons.check,
-                            color: Colors.white,
-                            size: 30,
-                          )
-                        : null,
-                  ),
-                );
-              },
-            ),
-            
+            // GridView.builder(
+            //   shrinkWrap: true,
+            //   physics: const NeverScrollableScrollPhysics(),
+            //   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            //     crossAxisCount: 4,
+            //     crossAxisSpacing: screenSize.width * 0.02,
+            //     mainAxisSpacing: screenSize.height * 0.01,
+            //     childAspectRatio: 1.2,
+            //   ),
+            //   itemCount: _availableColors.length,
+            //   itemBuilder: (context, index) {
+            //     final color = _availableColors[index];
+            //     final isSelected = _selectedColor == color;
+
+            //     return GestureDetector(
+            //       onTap: () {
+            //         setState(() {
+            //           _selectedColor = color;
+            //         });
+            //       },
+            //       child: Container(
+            //         decoration: BoxDecoration(
+            //           color: color,
+            //           border: Border.all(
+            //             color: isSelected ? Colors.black : Colors.grey,
+            //             width: isSelected ? 3 : 1,
+            //           ),
+            //           borderRadius: BorderRadius.circular(8),
+            //         ),
+            //         child: isSelected
+            //             ? const Icon(
+            //                 Icons.check,
+            //                 color: Colors.white,
+            //                 size: 30,
+            //               )
+            //             : null,
+            //       ),
+            //     );
+            //   },
+            // ),
+            _buildColorSelector(GameProvider()),
+
             SizedBox(height: screenSize.height * 0.05),
-            
+
             // Submit Button
             ElevatedButton(
               onPressed: _canSubmit() ? _submit : null,
@@ -149,7 +150,7 @@ class _ChooseColorNameState extends State<ChooseColorName> {
                 ),
               ),
             ),
-            
+
             SizedBox(height: screenSize.height * 0.02),
           ],
         ),
@@ -161,31 +162,106 @@ class _ChooseColorNameState extends State<ChooseColorName> {
     return _nameController.text.trim().isNotEmpty && _selectedColor != null;
   }
 
-  void _submit() {
-  if (_canSubmit()) {
-    final gameProvider = Provider.of<GameProvider>(context, listen: false);
-    final playerName = _nameController.text.trim();
-    final playerColor = _selectedColor!;
-    
-    // 1. Add the player (which calls saveGame() and updates state for everyone)
-    gameProvider.addPlayer(playerName, playerColor);
-    
-    // 2. Find the index of the player that was just added.
-    // This relies on the new player being the last in the *new* list.
-    // This is still slightly race-condition prone, but is the best simple approach 
-    // without using Firebase Authentication/UIDs for identification.
-    final playerIndex = gameProvider.players.length - 1; 
+//   void _submit() {
+//   if (_canSubmit()) {
+//     final gameProvider = Provider.of<GameProvider>(context, listen: false);
+//     final playerName = _nameController.text.trim();
+//     final playerColor = _selectedColor!;
 
-    // Navigate to destination selection, passing the player's index
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ChooseDestination(
-          isInitialSelection: true,
-          playerIndex: playerIndex, // <<< PASS THE INDEX
+//     // 1. Add the player (which calls saveGame() and updates state for everyone)
+//     gameProvider.addPlayer(playerName, playerColor);
+
+//     // 2. Find the index of the player that was just added.
+//     // This relies on the new player being the last in the *new* list.
+//     // This is still slightly race-condition prone, but is the best simple approach
+//     // without using Firebase Authentication/UIDs for identification.
+//     final playerIndex = gameProvider.players.length - 1;
+
+//     // Navigate to destination selection, passing the player's index
+//     Navigator.push(
+//       context,
+//       MaterialPageRoute(
+//         builder: (context) => ChooseDestination(
+//           isInitialSelection: true,
+//           playerIndex: playerIndex, // <<< PASS THE INDEX
+//         ),
+//       ),
+//     );
+//   }
+// }
+  void _submit() {
+    if (_canSubmit()) {
+      final gameProvider = Provider.of<GameProvider>(context, listen: false);
+      final playerName = _nameController.text.trim();
+      final playerColor = _selectedColor!;
+
+      // 1. Final check to ensure the color hasn't been taken in a race
+      if (gameProvider.players.any((p) => p.color == playerColor)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Color was just taken. Please choose another.')),
+        );
+        return;
+      }
+
+      // 2. Add the player to the game state
+      // We assume this is synchronous in GameManager and triggers an async saveGame()
+      gameProvider.addPlayer(playerName, playerColor);
+
+      // 3. The newly added player is now the last one in the local list.
+      // We rely on this index for the next screen navigation.
+      final playerIndex = gameProvider.players.length - 1;
+
+      // 4. Navigate to destination selection, passing the player's index
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChooseDestination(
+            isInitialSelection: true,
+            playerIndex: playerIndex, // Use the determined index
+          ),
         ),
-      ),
+      );
+    }
+  }
+
+  Widget _buildColorSelector(GameProvider gameProvider) {
+    // Get colors already taken by other players
+    final takenColors = gameProvider.players.map((p) => p.color).toSet();
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: _availableColors.map((color) {
+        final isTaken = takenColors.contains(color);
+
+        return GestureDetector(
+          onTap: isTaken
+              ? null // Disable tap if color is taken
+              : () {
+                  setState(() {
+                    _selectedColor = color;
+                  });
+                },
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: _selectedColor == color ? Colors.white : Colors.black26,
+                width: 3,
+              ),
+            ),
+            child: isTaken
+                ? const Icon(Icons.close,
+                    color: Colors.white, size: 20) // Indicate taken
+                : (_selectedColor == color
+                    ? const Icon(Icons.check, color: Colors.white)
+                    : null),
+          ),
+        );
+      }).toList(),
     );
   }
-}
 }

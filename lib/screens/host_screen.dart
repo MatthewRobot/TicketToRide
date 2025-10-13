@@ -9,7 +9,6 @@ import '../models/destination.dart';
 import '../models/card.dart' as game_card;
 import 'package:cloud_firestore/cloud_firestore.dart'; // <<< ADD THIS IMPORT
 
-
 class HostScreen extends StatefulWidget {
   const HostScreen({super.key});
 
@@ -18,7 +17,6 @@ class HostScreen extends StatefulWidget {
 }
 
 class _HostScreenState extends State<HostScreen> {
-  
   void _startNewGame(BuildContext context, GameProvider gameProvider) async {
     // 1. Get a unique ID from Firestore without creating the document yet
     final newGameRef = FirebaseFirestore.instance.collection('games').doc();
@@ -44,186 +42,203 @@ class _HostScreenState extends State<HostScreen> {
     final screenSize = MediaQuery.of(context).size;
     final gameProvider = Provider.of<GameProvider>(context);
     final isGameEnded = false; // This would be controlled by game state
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Ticket to Ride Map'),
-        centerTitle: true,
-        backgroundColor: Colors.blue[800],
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              _startNewGame(context, gameProvider); 
-            },
-            tooltip: 'Initialize Test Game',
+    if (!gameProvider.gameStarted) {
+      return Scaffold( // Wrap the button in a Scaffold for proper display
+        body: Center(
+          child: ElevatedButton(
+            onPressed:
+                gameProvider.players.length >= 2 // Example: require 2 players
+                    ? () {
+                        gameProvider
+                            .startGame(); // This sets gameStarted=true, deals initial train cards, and calls saveGame()
+                        // Optional: navigate to the Host's PlayerScreen if the Host is also playing
+                      }
+                    : null,
+            child: const Text('START GAME'),
           ),
-          IconButton(
-            icon: const Icon(Icons.person),
-            onPressed: () {
-              _testPlayerScreen(context, gameProvider);
-            },
-            tooltip: 'Test Player Screen',
-          ),
-        ],
-      ),
-      body: Padding(
-        padding: EdgeInsets.all(screenSize.width * 0.01),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment
-              .stretch, // ⬅️ IMPORTANT: Forces children to fill the Row's height
-          children: [
-            // Map Section - Use Expanded for full height and proportional width
-            Expanded(
-              flex: 69, // Proportional to your desired 69% width
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey),
-                  borderRadius: BorderRadius.circular(8.0),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8.0),
-                  // child: SvgPicture.asset(
-                  //   'assets/images/map.svg',
-                  //   fit: BoxFit.contain, // The SVG will now scale up to the full height of the Expanded
-                  //   placeholderBuilder: (context) => const CircularProgressIndicator(),
-                  // ),
-                  child:
-                      const InteractiveMapWidget(), // Replace static SVG with the interactive widget
-                ),
-              ),
+        ),
+      );
+    } else {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Ticket to Ride Map'),
+          centerTitle: true,
+          backgroundColor: Colors.blue[800],
+          foregroundColor: Colors.white,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: () {
+                _startNewGame(context, gameProvider);
+              },
+              tooltip: 'Initialize Test Game',
             ),
-
-            SizedBox(width: screenSize.width * 0.01), // Spacer
-
-            // Sidebar - Use Expanded for full height and proportional width
-            Expanded(
-              flex: 28, // Proportional to your desired 28% width
-              child: Column(
-                // The Column inside the Expanded will now correctly use the full height.
-                children: [
-                  // Leaderboard Section
-                  Expanded(
-                    flex: 2,
-                    child: Container(
-                      padding: EdgeInsets.all(screenSize.width * 0.01),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        border: Border.all(color: Colors.grey),
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Leaderboard (${gameProvider.players.length} players)',
-                            style: TextStyle(
-                              fontSize: screenSize.width * 0.02,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: screenSize.height * 0.01),
-                          if (gameProvider.players.isEmpty)
-                            Center(
-                              child: Text(
-                                'Click refresh to initialize test game',
-                                style: TextStyle(
-                                  fontSize: screenSize.width * 0.012,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            )
-                          else
-                            Expanded(
-                              child: _buildLeaderboardTable(
-                                  screenSize, isGameEnded, gameProvider),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  SizedBox(height: screenSize.height * 0.01),
-
-                  // Destination Drawing Button
-                  Container(
-                    margin: EdgeInsets.symmetric(
-                        horizontal: screenSize.width * 0.01),
-                    child: ElevatedButton(
-                      onPressed: () {
-                        // This would trigger destination selection on player devices
-                        // For now, show a message about how this would work
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                                'Destination selection will appear on player devices'),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-
-                        // In a real implementation, this would:
-                        // 1. Send a signal to all player devices
-                        // 2. Each player device would show the destination selection screen
-                        // 3. Host screen would remain visible to all players
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green[600],
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(
-                          vertical: screenSize.height * 0.015,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: Text(
-                        'Draw Destinations',
-                        style: TextStyle(
-                          fontSize: screenSize.width * 0.015,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  SizedBox(height: screenSize.height * 0.01),
-
-                  // Deck Section
-                  Expanded(
-                    flex: 1,
-                    child: Container(
-                      padding: EdgeInsets.all(screenSize.width * 0.01),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        border: Border.all(color: Colors.grey),
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Deck',
-                            style: TextStyle(
-                              fontSize: screenSize.width * 0.02,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: screenSize.height * 0.01),
-                          Expanded(
-                            child: _buildDeckRow(screenSize, gameProvider),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            IconButton(
+              icon: const Icon(Icons.person),
+              onPressed: () {
+                _testPlayerScreen(context, gameProvider);
+              },
+              tooltip: 'Test Player Screen',
             ),
           ],
         ),
-      ),
-    );
+        body: Padding(
+          padding: EdgeInsets.all(screenSize.width * 0.01),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment
+                .stretch, // ⬅️ IMPORTANT: Forces children to fill the Row's height
+            children: [
+              // Map Section - Use Expanded for full height and proportional width
+              Expanded(
+                flex: 69, // Proportional to your desired 69% width
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8.0),
+                    // child: SvgPicture.asset(
+                    //   'assets/images/map.svg',
+                    //   fit: BoxFit.contain, // The SVG will now scale up to the full height of the Expanded
+                    //   placeholderBuilder: (context) => const CircularProgressIndicator(),
+                    // ),
+                    child:
+                        const InteractiveMapWidget(), // Replace static SVG with the interactive widget
+                  ),
+                ),
+              ),
+
+              SizedBox(width: screenSize.width * 0.01), // Spacer
+
+              // Sidebar - Use Expanded for full height and proportional width
+              Expanded(
+                flex: 28, // Proportional to your desired 28% width
+                child: Column(
+                  // The Column inside the Expanded will now correctly use the full height.
+                  children: [
+                    // Leaderboard Section
+                    Expanded(
+                      flex: 2,
+                      child: Container(
+                        padding: EdgeInsets.all(screenSize.width * 0.01),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Leaderboard (${gameProvider.players.length} players)',
+                              style: TextStyle(
+                                fontSize: screenSize.width * 0.02,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(height: screenSize.height * 0.01),
+                            if (gameProvider.players.isEmpty)
+                              Center(
+                                child: Text(
+                                  'Click refresh to initialize test game',
+                                  style: TextStyle(
+                                    fontSize: screenSize.width * 0.012,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              )
+                            else
+                              Expanded(
+                                child: _buildLeaderboardTable(
+                                    screenSize, isGameEnded, gameProvider),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(height: screenSize.height * 0.01),
+
+                    // Destination Drawing Button
+                    Container(
+                      margin: EdgeInsets.symmetric(
+                          horizontal: screenSize.width * 0.01),
+                      child: ElevatedButton(
+                        onPressed: () {
+                          // This would trigger destination selection on player devices
+                          // For now, show a message about how this would work
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                  'Destination selection will appear on player devices'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+
+                          // In a real implementation, this would:
+                          // 1. Send a signal to all player devices
+                          // 2. Each player device would show the destination selection screen
+                          // 3. Host screen would remain visible to all players
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green[600],
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                            vertical: screenSize.height * 0.015,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text(
+                          'Draw Destinations',
+                          style: TextStyle(
+                            fontSize: screenSize.width * 0.015,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(height: screenSize.height * 0.01),
+
+                    // Deck Section
+                    Expanded(
+                      flex: 1,
+                      child: Container(
+                        padding: EdgeInsets.all(screenSize.width * 0.01),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Deck',
+                              style: TextStyle(
+                                fontSize: screenSize.width * 0.02,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(height: screenSize.height * 0.01),
+                            Expanded(
+                              child: _buildDeckRow(screenSize, gameProvider),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
   }
 
   Widget _buildLeaderboardTable(
@@ -365,8 +380,8 @@ class _HostScreenState extends State<HostScreen> {
                 onPressed: () {
                   // Take card from table
                   if (gameProvider.players.isNotEmpty) {
-                    gameProvider.playerTakeFromTable(
-                        gameProvider.players[0], index);
+                    gameProvider.takeCardFromTable(
+                        gameProvider.currentPlayerIndex, index);
                   }
                 },
                 style: ElevatedButton.styleFrom(
@@ -402,7 +417,7 @@ class _HostScreenState extends State<HostScreen> {
                 onPressed: () {
                   // Draw from deck
                   if (gameProvider.players.isNotEmpty) {
-                    gameProvider.playerDrawFromDeck(gameProvider.players[0]);
+                    gameProvider.drawCardFromDeck(gameProvider.currentPlayerIndex);
                   }
                 },
                 style: ElevatedButton.styleFrom(

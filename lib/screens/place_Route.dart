@@ -394,7 +394,7 @@ class _PlaceRouteState extends State<PlaceRoute> {
   }
 
   // Inside _PlaceRouteState:
-  void _placeRoute() {
+  void _placeRoute() async {
     if (_canPlaceRoute()) {
       final gameProvider = Provider.of<GameProvider>(context, listen: false);
 
@@ -421,13 +421,15 @@ class _PlaceRouteState extends State<PlaceRoute> {
       }
 
       // 2. Call the new method on GameManager
-      final success = gameProvider.placeRoute(
+      final success = await gameProvider.placeRoute(
+        // <--- FIX: Add await
         playerIndex: widget.playerIndex,
         route: widget.route,
         cards: cardsToUse,
       );
 
       if (success) {
+        //error Conditions must have a static type of 'bool'.
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Route placed successfully!'),

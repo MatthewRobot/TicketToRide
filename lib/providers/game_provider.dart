@@ -25,6 +25,9 @@ class GameProvider extends ChangeNotifier {
   int get usedPileSize => _gameManager.usedPileSize;
   int get destinationDeckSize => _gameManager.destinationDeckSize;
   bool get gameStarted => _gameManager.gameStarted;
+  int get currentPlayerIndex => _gameManager.currentPlayerIndex;
+  bool get isGameOver => _gameManager.isGameOver;
+
 
   // Initialize game with test players
   void initializeTestGame() {
@@ -56,14 +59,45 @@ class GameProvider extends ChangeNotifier {
   }
 
   // Player actions
-  void playerDrawFromDeck(Player player) {
-    _gameManager.playerDrawFromDeck(player);
-    saveGame();
+  // --- Player Actions ---
+
+// 1. Action: Player draws a card from the deck
+// This replaces the old `player.drawCards` logic if you only draw one at a time.
+// Note: A full turn is **two** draw actions, or one draw and one action (place/dest).
+// This is one part of the turn.
+  Future<void> drawCardFromDeck(int playerIndex) async {
+    if (playerIndex != _gameManager.currentPlayerIndex ||
+        _gameManager.isGameOver) return;
+
+    // NOTE: This assumes the action is valid (player hasn't taken max actions yet)
+    _gameManager.players[playerIndex].drawCards(_gameManager.deck,
+        rainbowFromTable: false); // Draws 2 cards if used like this
+
+    await saveGame();
   }
 
-  void playerTakeFromTable(Player player, int tableIndex) {
-    _gameManager.playerTakeFromTable(player, tableIndex);
-    saveGame();
+// 2. Action: Player takes a card from the table
+  Future<void> takeCardFromTable(int playerIndex, int tableIndex) async {
+    if (playerIndex != _gameManager.currentPlayerIndex ||
+        _gameManager.isGameOver) return;
+
+    final cardType = _gameManager.deck.table[tableIndex].type;
+
+    // Note: Your player.takeCardFromTable handles the draw/replacement logic in the Deck.
+    _gameManager.players[playerIndex]
+        .takeCardFromTable(_gameManager.deck, tableIndex);
+
+    // Determine if this draw ends the player's draw phase
+    // TTR rule: taking a Rainbow card from the table counts as both actions.
+    final isRainbowFromTable = (cardType == game_card.CardType.rainbow);
+
+    // Save state
+    await saveGame();
+
+    // If it was a Rainbow card, the turn ends immediately
+    if (isRainbowFromTable) {
+      await endTurn(playerIndex);//Too many positional arguments: 0 expected, but 1 found.
+    }
   }
 
   // void playerUseCard(Player player, game_card.Card card) {
@@ -71,20 +105,55 @@ class GameProvider extends ChangeNotifier {
   //   notifyListeners();
   // }
 
-  bool placeRoute({
+  Future<bool> placeRoute({
     required int playerIndex,
     required TrainRoute route,
     required List<game_card.Card> cards,
-  }) {
-    // Call the method on the underlying GameManager
-    final success = _gameManager.placeRoute(playerIndex, route, cards);
+  }) async {
+    if (playerIndex != _gameManager.currentPlayerIndex ||
+        _gameManager.isGameOver) {
+      return false;
+    }
+
+    // 1. Call the core game logic method in GameManager
+    final success = _gameManager.placeRoute(
+        playerIndex: playerIndex, route: route, cards: cards);
 
     if (success) {
-      // REMOVE: notifyListeners();
-      saveGame(); // <- NEW: Save the new route and player state
+      // 2. Turn ends on success
+      await endTurn(playerIndex);//Too many positional arguments: 0 expected, but 1 found.
+
+    } else {
+      // 3. Save state even if it failed, in case of small internal state change
+      await saveGame();
     }
 
     return success;
+  }
+
+  
+
+  Future<void> completeDestinationSelection(
+      Player player,
+      List<Destination> selectedDestinations,
+      List<Destination> unselectedDestinations) async {
+    // 1. Add selected and return unselected
+    _gameManager.addSelectedDestinations(player, selectedDestinations);
+    _gameManager.destinationDeck.addToUsedPile(unselectedDestinations);
+
+    // 2. End the player's turn
+    await endTurn(currentPlayerIndex);
+  }
+
+  Future<void> endTurn(int playerIndex) async {
+    if (playerIndex != _gameManager.currentPlayerIndex ||
+        _gameManager.isGameOver) return;
+
+    // 1. Advance the game state
+    _gameManager.nextTurn();
+
+    // 2. Save the new state
+    await saveGame();
   }
 
   // Player destination actions
@@ -98,11 +167,40 @@ class GameProvider extends ChangeNotifier {
     return _gameManager.getNewDestinations();
   }
 
+  Future<void> addSelectedDestinationsSetup(
+      Player player,
+      List<Destination> selectedDestinations,
+      List<Destination> unselectedDestinations) async {
+    // Add selected cards to the player's permanent hand
+    _gameManager.addSelectedDestinations(player, selectedDestinations);
+
+    // Return unselected cards to the destination deck's used pile
+    _gameManager.destinationDeck.addToUsedPile(unselectedDestinations);
+
+    await saveGame();
+  }
+
   // Add selected destinations to player
   void addSelectedDestinations(Player player, List<Destination> destinations) {
     _gameManager.addSelectedDestinations(player, destinations);
     // REMOVE: notifyListeners();
     saveGame(); // <- NEW: Save the updated player destination cards
+  }
+
+  // You would need to make sure you call _gameManager.setAllRoutes(routes)
+  // after loading the routes from MapGeometryService, likely when the game is
+  // hosted/joined or when GameProvider is created.
+
+  // <<< NEW METHOD TO SET ROUTES (Required for Scoring to work) >>>
+  // You'll need to call this after loading map data in your setup logic.
+  void loadMapDataAndSetRoutes(List<TrainRoute> allRoutes) {
+    _gameManager.setAllRoutes(allRoutes);
+  }
+
+  // <<< NEW METHOD TO GET FINAL SCORES >>>
+  List<Map<String, dynamic>> getFinalScores() {
+    // Returns a list of maps containing all final score breakdowns.
+    return _gameManager.getFinalScores();
   }
 
   // Get game statistics
