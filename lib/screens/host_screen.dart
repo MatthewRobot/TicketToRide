@@ -328,25 +328,6 @@ class _HostScreenState extends State<HostScreen> {
           centerTitle: true,
           backgroundColor: Colors.blue[800],
           foregroundColor: Colors.white,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: () {
-                // Reset and create a new test game with 4 players
-                gameProvider.resetGame();
-                _displayedGameId = null;
-                _startNewGame(context, gameProvider);
-              },
-              tooltip: 'New Test Game (4 Players)',
-            ),
-            IconButton(
-              icon: const Icon(Icons.person),
-              onPressed: () {
-                _testPlayerScreen(context, gameProvider);
-              },
-              tooltip: 'Test Player Screen',
-            ),
-          ],
         ),
         body: Padding(
           padding: EdgeInsets.all(screenSize.width * 0.01),
@@ -785,52 +766,4 @@ class _HostScreenState extends State<HostScreen> {
     );
   }
 
-  void _testPlayerScreen(BuildContext context, GameProvider gameProvider) {
-    if (gameProvider.players.isEmpty) {
-      gameProvider.addPlayer('Test Player', Colors.red);
-      gameProvider.addPlayer('Test Player 2', Colors.blue);
-
-      final testDestinations = [
-        Destination(from: 'Boston', to: 'Miami', points: 12),
-        Destination(from: 'Los Angeles', to: 'New York', points: 21),
-        Destination(from: 'Seattle', to: 'Los Angeles', points: 9),
-      ];
-
-      if (gameProvider.players.isNotEmpty) {
-        gameProvider.players[0].handOfDestinationCards.addAll(testDestinations);
-      }
-
-      final testCards = [
-        game_card.Card(type: game_card.CardType.red, isVisible: true),
-        game_card.Card(type: game_card.CardType.red, isVisible: true),
-        game_card.Card(type: game_card.CardType.blue, isVisible: true),
-        game_card.Card(type: game_card.CardType.green, isVisible: true),
-        game_card.Card(type: game_card.CardType.yellow, isVisible: true),
-        game_card.Card(type: game_card.CardType.yellow, isVisible: true),
-        game_card.Card(type: game_card.CardType.yellow, isVisible: true),
-        game_card.Card(type: game_card.CardType.pink, isVisible: true),
-        game_card.Card(type: game_card.CardType.rainbow, isVisible: true),
-      ];
-
-      if (gameProvider.players.isNotEmpty) {
-        gameProvider.players[0].handOfCards.addAll(testCards);
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Test player created with sample cards'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-    }
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const PlayerScreen(
-          playerIndex: 0,
-        ),
-      ),
-    );
-  }
 }

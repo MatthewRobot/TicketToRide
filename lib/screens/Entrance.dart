@@ -3,6 +3,10 @@ import 'choose_color_name.dart';
 import 'host_screen.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
+// IMPORTANT: You'll need to import your AuthService and AuthScreen here
+import '../services/auth_service.dart';
+import 'auth_screen.dart'; 
+// Assuming AuthScreen is your login/auth screen widget
 
 class Entrance extends StatefulWidget {
   const Entrance({super.key});
@@ -20,12 +24,38 @@ class _Entrance extends State<Entrance> {
     super.dispose();
   }
 
+  // New _logOut method to handle the sign-out process
+  void _logOut(BuildContext context) async {
+    await Provider.of<AuthService>(context, listen: false).signOut();
+    
+    // 1. Navigate back to the login/auth screen.
+    // Use pushAndRemoveUntil to clear the navigation history completely.
+    // Navigator.pushAndRemoveUntil(
+    //   context,
+    //   MaterialPageRoute(builder: (context) => const AuthScreen()
+    //   ),
+    //   (route) => false, // Remove all previous routes
+    // );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Ticket to Ride'),
         centerTitle: true,
+        // --- LOG OUT BUTTON ADDED HERE ---
+        actions: [
+          TextButton.icon(
+            onPressed: () => _logOut(context),
+            icon: const Icon(Icons.logout, color: Color.fromARGB(255, 13, 12, 12)),
+            label: const Text(
+              'Log Out',
+              style: TextStyle(color: Color.fromARGB(255, 2, 2, 2)),
+            ),
+          ),
+        ],
+        // ---------------------------------
       ),
       body: Center(
         child: Column(

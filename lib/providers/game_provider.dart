@@ -44,7 +44,21 @@ class GameProvider extends ChangeNotifier {
   bool get gameStarted => _gameManager.gameStarted;
   int get currentPlayerIndex => _gameManager.currentPlayerIndex;
   bool get isGameOver => _gameManager.isGameOver;
+  Color? _currentPlayerColor; 
 
+  Color? get currentPlayerColor => _currentPlayerColor;
+
+  void setCurrentPlayerColor(Color color) {
+    _currentPlayerColor = color;
+  }
+  
+  void removePlayer(Color? color) {
+    if (color != null) {
+      players.removeWhere((p) => p.color == color);
+      _currentPlayerColor = null;
+      notifyListeners();
+    }
+  }
   // Initialize game with test players
   void initializeTestGame() {
     if (!_isInitialized) {
