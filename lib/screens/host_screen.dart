@@ -34,31 +34,30 @@ class _HostScreenState extends State<HostScreen> {
     super.dispose();
   }
 
-  void _createGameIfNeeded() async {
-    final gameProvider = Provider.of<GameProvider>(context, listen: false);
+ void _createGameIfNeeded() async {
+  final gameProvider = Provider.of<GameProvider>(context, listen: false);
+  
+  if (_displayedGameId == null && !_isInitializing) {
+    setState(() {
+      _isInitializing = true;
+    });
     
-    // Only create if we don't have a game ID yet
-    if (_displayedGameId == null && !_isInitializing) {
-      setState(() {
-        _isInitializing = true;
-      });
-      
-      // Create game without test players
-      final newGameRef = FirebaseFirestore.instance.collection('games').doc();
-      final gameId = newGameRef.id;
+    final newGameRef = FirebaseFirestore.instance.collection('games').doc();
+    final gameId = newGameRef.id;
 
+    try {
+      // 1. Connection (Log is expected)
       await gameProvider.connectToGame(gameId);
       
-      // Initialize the game manager (but don't call initializeTestGame)
-      // Just mark it as ready to accept players
-      await gameProvider.saveGame();
+      // 2. CRITICAL STEP: Save/Create Document
+      await gameProvider.saveGame(); // ⬅️ Suspect for unhandled exception
       
-      setState(() {
-        _displayedGameId = gameId;
-        _isInitializing = false;
-      });
-
+      // 3. Update UI state only after successful save
       if (mounted) {
+        setState(() {
+          _displayedGameId = gameId;
+          _isInitializing = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Game ID: $gameId. Share this with players!'),
@@ -66,8 +65,20 @@ class _HostScreenState extends State<HostScreen> {
           ),
         );
       }
+    } catch (e) {
+      // 4. Catch and log any exceptions from connectToGame or saveGame
+      print('FATAL ERROR during Game Initialization: $e');
+      if (mounted) {
+        setState(() {
+          _isInitializing = false; // MUST set to false to un-stick the UI
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to create game: Check Console.')),
+        );
+      }
     }
   }
+}
 
   void _startNewGame(BuildContext context, GameProvider gameProvider) async {
     // 1. Get a unique ID from Firestore without creating the document yet

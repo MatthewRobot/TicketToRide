@@ -10,10 +10,27 @@ import 'dart:async';
 class GameProvider extends ChangeNotifier {
   GameManager _gameManager = GameManager();
   bool _isInitialized = false;
+  
+  // NEW: Field for the authenticated user ID
+  String _userId; 
 
   String? _gameId;
   StreamSubscription? _gameSubscription;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  
+  // NEW: Constructor now requires the user ID
+  GameProvider({required String userId}) : _userId = userId;
+
+  // NEW: Getter for the current authenticated user ID.
+  String get userId => _userId;
+
+  // NEW: Method to update the user ID (called by AuthWrapper)
+  void updateUserId(String newId) {
+    if (_userId != newId) {
+      _userId = newId;
+      notifyListeners(); 
+    }
+  }
 
   // Getters
   String? get gameId => _gameId;
@@ -31,6 +48,7 @@ class GameProvider extends ChangeNotifier {
   // Initialize game with test players
   void initializeTestGame() {
     if (!_isInitialized) {
+      // NOTE: You may want to remove this test function once the app is fully authenticated
       _gameManager.addPlayer('Player 1', Colors.red);
       _gameManager.addPlayer('Player 2', Colors.blue);
       _gameManager.addPlayer('Player 3', Colors.green);
@@ -47,7 +65,20 @@ class GameProvider extends ChangeNotifier {
     _gameManager.addPlayer(name, color);
     saveGame();
   }
-
+  
+  // NEW: Method to create a new game in Firestore
+  Future<String> createGame() async {
+    // Assuming GameManager has a way to identify the host/first player by UID
+    // You will need to ensure GameManager.newGame accepts the hostUserId
+    _gameManager = GameManager.newGame(hostUserId: _userId); 
+    
+    // Create the document, Firestore generates the ID
+    final docRef = await _firestore.collection('games').add(_gameManager.toFirebase());
+    _gameId = docRef.id;
+    await connectToGame(_gameId!); // Start listening to the newly created game
+    return _gameId!;
+  }
+  
   // Start the game
   void startGame() {
     _gameManager.startGame();
@@ -186,13 +217,24 @@ class GameProvider extends ChangeNotifier {
     });
   }
 
-  // Saves game state to Firebase
   Future<void> saveGame() async {
     if (_gameId != null) {
-      final gameData = toFirebase();
-      await _firestore.collection('games').doc(_gameId!).set(gameData);
+        try {
+            final gameData = toFirebase();
+            print('DEBUG (Provider): Successfully serialized game data.'); // ⬅️ ADD THIS
+
+            // The Firestore write operation that might be hanging:
+            await _firestore.collection('games').doc(_gameId!).set(gameData);
+            print('DEBUG (Provider): Firestore set operation completed successfully.'); // ⬅️ ADD THIS
+
+        } catch (e) {
+            // This catches serialization errors (from toFirebase) or write errors
+            print('FATAL ERROR (Provider): Exception during saveGame: $e');
+            // Re-throw the error so it can be caught in the HostScreen's try-catch block
+            rethrow; 
+        }
     }
-  }
+}
 
   @override
   void dispose() {

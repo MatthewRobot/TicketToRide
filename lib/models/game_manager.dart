@@ -39,8 +39,19 @@ class GameManager {
     6: 15,
   };
 
-  GameManager();
+  // ORIGINAL CONSTRUCTOR (Used for deserialization)
+  GameManager(); 
 
+  // NEW: Factory method to create a new game instance, ready for the host.
+  // We use this in the GameProvider's createGame method.
+  factory GameManager.newGame({required String hostUserId}) {
+    // Note: We don't add the host player here, as they choose name/color later.
+    // We just return a clean slate. You could optionally store the hostUserId
+    // in the GameManager class if needed for permissions/UI, but for now, 
+    // a clean instance is sufficient.
+    return GameManager();
+  }
+  
   // You would need a way to load all possible routes and initialize routeOwners.
   // For now, assume this map is correctly populated with all route IDs.
   // Example initialization for a new game:

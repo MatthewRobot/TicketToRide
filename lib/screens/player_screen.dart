@@ -94,38 +94,38 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
             SizedBox(height: screenSize.height * 0.01),
 
-            // Test button for place route
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => PlaceRoute(
-                      playerIndex: widget.playerIndex,
-                      route: TrainRoute(
-                        id: 'BOS-NYC-R',
-                        fromId: 'Boston',
-                        toId: 'New York',
-                        length: 3,
-                        color: 'red', // Sample route'
-                      ),
-                    ),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue[600],
-                foregroundColor: Colors.white,
-                padding:
-                    EdgeInsets.symmetric(vertical: screenSize.height * 0.01),
-              ),
-              child: Text(
-                'Test Place Route',
-                style: TextStyle(fontSize: screenSize.width * 0.04),
-              ),
-            ),
+            // // Test button for place route
+            // ElevatedButton(
+            //   onPressed: () {
+            //     Navigator.push(
+            //       context,
+            //       MaterialPageRoute(
+            //         builder: (context) => PlaceRoute(
+            //           playerIndex: widget.playerIndex,
+            //           route: TrainRoute(
+            //             id: 'BOS-NYC-R',
+            //             fromId: 'Boston',
+            //             toId: 'New York',
+            //             length: 3,
+            //             color: 'red', // Sample route'
+            //           ),
+            //         ),
+            //       ),
+            //     );
+            //   },
+            //   style: ElevatedButton.styleFrom(
+            //     backgroundColor: Colors.blue[600],
+            //     foregroundColor: Colors.white,
+            //     padding:
+            //         EdgeInsets.symmetric(vertical: screenSize.height * 0.01),
+            //   ),
+            //   child: Text(
+            //     'Test Place Route',
+            //     style: TextStyle(fontSize: screenSize.width * 0.04),
+            //   ),
+            // ),
 
-            SizedBox(height: screenSize.height * 0.02),
+            // SizedBox(height: screenSize.height * 0.02),
 
             // Destination cards section
             Expanded(
