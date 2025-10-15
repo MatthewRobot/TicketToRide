@@ -1,17 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:ticket_to_ride/models/train_route.dart';
 import '../providers/game_provider.dart';
-import '../models/destination.dart';
 import '../models/card.dart' as game_card;
-import 'place_Route.dart';
 
 class PlayerScreen extends StatefulWidget {
-  final int playerIndex;
+  final int? playerIndex; // Make optional for auto-detection
 
   const PlayerScreen({
     super.key,
-    required this.playerIndex,
+    this.playerIndex,
   });
 
   @override
@@ -23,16 +20,22 @@ class _PlayerScreenState extends State<PlayerScreen> {
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
     final gameProvider = Provider.of<GameProvider>(context);
-    final player = gameProvider.players[widget.playerIndex];
-    final isMyTurn = widget.playerIndex == gameProvider.currentPlayerIndex;
-    final isGameOver = gameProvider.isGameOver;
 
-    if (widget.playerIndex >= gameProvider.players.length) {
+    // Use myPlayerIndex if playerIndex not provided
+    final int? effectivePlayerIndex =
+        widget.playerIndex ?? gameProvider.myPlayerIndex;
+
+    if (effectivePlayerIndex == null ||
+        effectivePlayerIndex >= gameProvider.players.length) {
       return Scaffold(
         appBar: AppBar(title: const Text('Player Not Found')),
-        body: const Center(child: Text('Player not found')),
+        body: const Center(child: Text('Player not found or not joined')),
       );
     }
+
+    final player = gameProvider.players[effectivePlayerIndex];
+    final isMyTurn = effectivePlayerIndex == gameProvider.currentPlayerIndex;
+    final isGameOver = gameProvider.isGameOver;
 
     return Scaffold(
       appBar: AppBar(
@@ -54,7 +57,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 isGameOver
                     ? 'GAME OVER! Awaiting Final Scores.'
                     : isMyTurn
-                        ? 'YOUR TURN! Await Host Action.'
+                        ? 'YOUR TURN!'
                         : 'Waiting for ${gameProvider.players[gameProvider.currentPlayerIndex].name}',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
@@ -63,6 +66,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     fontSize: 16),
               ),
             ),
+
+            SizedBox(height: screenSize.height * 0.01),
+
             // Number of trains
             Container(
               padding: EdgeInsets.all(screenSize.width * 0.03),
@@ -92,40 +98,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
               ),
             ),
 
-            SizedBox(height: screenSize.height * 0.01),
-
-            // // Test button for place route
-            // ElevatedButton(
-            //   onPressed: () {
-            //     Navigator.push(
-            //       context,
-            //       MaterialPageRoute(
-            //         builder: (context) => PlaceRoute(
-            //           playerIndex: widget.playerIndex,
-            //           route: TrainRoute(
-            //             id: 'BOS-NYC-R',
-            //             fromId: 'Boston',
-            //             toId: 'New York',
-            //             length: 3,
-            //             color: 'red', // Sample route'
-            //           ),
-            //         ),
-            //       ),
-            //     );
-            //   },
-            //   style: ElevatedButton.styleFrom(
-            //     backgroundColor: Colors.blue[600],
-            //     foregroundColor: Colors.white,
-            //     padding:
-            //         EdgeInsets.symmetric(vertical: screenSize.height * 0.01),
-            //   ),
-            //   child: Text(
-            //     'Test Place Route',
-            //     style: TextStyle(fontSize: screenSize.width * 0.04),
-            //   ),
-            // ),
-
-            // SizedBox(height: screenSize.height * 0.02),
+            SizedBox(height: screenSize.height * 0.02),
 
             // Destination cards section
             Expanded(
@@ -147,12 +120,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 ],
               ),
             ),
-
-            // Divider
-            // Divider(
-            //   thickness: 2,
-            //   color: Colors.grey[400],
-            // ),
 
             SizedBox(height: screenSize.height * 0.01),
 
@@ -196,61 +163,41 @@ class _PlayerScreenState extends State<PlayerScreen> {
       child: Wrap(
         spacing: screenSize.width * 0.02,
         runSpacing: screenSize.height * 0.01,
-        children: destinations.map<Widget>((destination) {
-          return _buildDestinationCard(screenSize, destination);
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildDestinationCard(Size screenSize, Destination destination) {
-    return Container(
-      width: screenSize.width * 0.4,
-      child: ElevatedButton(
-        onPressed: () {
-          // Toggle background color when clicked
-          setState(() {
-            // This would toggle some visual state
-            // For now, just show a message
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Selected: ${destination.displayName}'),
-                duration: const Duration(seconds: 1),
+        children: [
+          // <--- START LIST LITERAL
+          ...destinations.map((destination) {
+            return Container(
+              width: screenSize.width * 0.4,
+              child: Card(
+                elevation: 2,
+                child: Padding(
+                  padding: EdgeInsets.all(screenSize.width * 0.02),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        destination.displayName,
+                        style: TextStyle(
+                          fontSize: screenSize.width * 0.035,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: screenSize.height * 0.005),
+                      Text(
+                        '${destination.points} points',
+                        style: TextStyle(
+                          fontSize: screenSize.width * 0.03,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             );
-          });
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
-          padding: EdgeInsets.all(screenSize.width * 0.02),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: BorderSide(color: Colors.grey[400]!, width: 1),
-          ),
-          elevation: 2,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              destination.displayName,
-              style: TextStyle(
-                fontSize: screenSize.width * 0.035,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: screenSize.height * 0.005),
-            Text(
-              '${destination.points} points',
-              style: TextStyle(
-                fontSize: screenSize.width * 0.03,
-                color: Colors.grey[600],
-              ),
-            ),
-          ],
-        ),
+          })
+        ],
       ),
     );
   }
@@ -273,7 +220,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
             (screenSize.width * 0.06) -
             (4 * screenSize.width * 0.02)) /
         3;
-    final cardHeight = screenSize.height / 10;
+    final cardHeight = screenSize.height/12;
 
     return SizedBox(
       height:
@@ -371,57 +318,38 @@ class _PlayerScreenState extends State<PlayerScreen> {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.black, width: 2),
       ),
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Padding(
-              padding:
-                  EdgeInsets.symmetric(horizontal: screenSize.width * 0.01),
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  card.name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                    shadows: [
-                      Shadow(offset: Offset(-1.5, -1.5), color: Colors.black),
-                      Shadow(offset: Offset(1.5, -1.5), color: Colors.black),
-                      Shadow(offset: Offset(1.5, 1.5), color: Colors.black),
-                      Shadow(offset: Offset(-1.5, 1.5), color: Colors.black),
-                    ],
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            card.name,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: screenSize.width * 0.03,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: screenSize.height * 0.005),
+          Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: screenSize.width * 0.02,
+              vertical: screenSize.height * 0.005,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '$count',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: screenSize.width * 0.04,
+                fontWeight: FontWeight.bold,
               ),
             ),
-            SizedBox(height: screenSize.height * 0.005),
-            // Removed the outer Container that had the white background
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                '$count',
-                style: const TextStyle(
-                  color: Colors.black, // The main text color for the number
-                  fontSize: 40,
-                  fontWeight: FontWeight.bold,
-                  shadows: [
-                    // White stroke for the number
-                    Shadow(offset: Offset(-1.5, -1.5), color: Colors.white),
-                    Shadow(offset: Offset(1.5, -1.5), color: Colors.white),
-                    Shadow(offset: Offset(1.5, 1.5), color: Colors.white),
-                    Shadow(offset: Offset(-1.5, 1.5), color: Colors.white),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

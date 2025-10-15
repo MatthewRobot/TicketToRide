@@ -4,6 +4,7 @@ import 'destination.dart';
 class DestinationDeck {
   List<Destination> _stack = [];
   List<Destination> _usedPile = [];
+  List<Destination> _pendingSelection = []; // NEW: Track cards in selection
 
   DestinationDeck() {
     _initializeDeck();
@@ -50,7 +51,6 @@ class DestinationDeck {
     _stack.addAll(destinations);
   }
 
-  // Fisher-Yates (Knuth) Shuffle Algorithm
   void _shuffleDeck() {
     final random = Random();
     for (int i = _stack.length - 1; i > 0; i--) {
@@ -61,7 +61,6 @@ class DestinationDeck {
     }
   }
 
-  // Draw a destination card from the top of the stack
   Destination? drawDestination() {
     if (_stack.isEmpty) {
       _reshuffleUsedPile();
@@ -73,19 +72,23 @@ class DestinationDeck {
     return null;
   }
 
-  // Add a destination to the used pile
   void addToUsedPile(List<Destination> destinations) {
     _usedPile.addAll(destinations);
+    // Also remove from pending if they were there
+    _pendingSelection.removeWhere((pending) => 
+      destinations.any((dest) => 
+        dest.from == pending.from && dest.to == pending.to
+      )
+    );
   }
 
-  // Reshuffle used pile back into stack
   void _reshuffleUsedPile() {
     _stack = List.from(_usedPile);
     _usedPile.clear();
     _shuffleDeck();
   }
 
-  // Deal initial destination cards to players (typically 3-4 cards)
+  // Deal initial destination cards and mark them as pending
   List<Destination> dealInitialDestinations(int count) {
     List<Destination> dealtCards = [];
     for (int i = 0; i < count && _stack.isNotEmpty; i++) {
@@ -94,17 +97,25 @@ class DestinationDeck {
         dealtCards.add(destination);
       }
     }
+    
+    // Mark these as pending selection
+    _pendingSelection.addAll(dealtCards);
+    
     return dealtCards;
   }
 
-  // Getters for game state
+  // Complete destination selection - move unselected to used pile
+  void completeSelection(List<Destination> unselected) {
+    addToUsedPile(unselected);
+  }
+
   int get stackSize => _stack.length;
   int get usedPileSize => _usedPile.length;
   List<Destination> get remainingDestinations => List.unmodifiable(_stack);
 
   @override
   String toString() {
-    return 'DestinationDeck(stack: ${_stack.length}, used: ${_usedPile.length})';
+    return 'DestinationDeck(stack: ${_stack.length}, used: ${_usedPile.length}, pending: ${_pendingSelection.length})';
   }
 
   // Firebase serialization
@@ -112,6 +123,7 @@ class DestinationDeck {
     return {
       'stack': _stack.map((d) => d.toFirebase()).toList(),
       'usedPile': _usedPile.map((d) => d.toFirebase()).toList(),
+      'pendingSelection': _pendingSelection.map((d) => d.toFirebase()).toList(),
     };
   }
 
@@ -121,6 +133,9 @@ class DestinationDeck {
         .map((d) => Destination.fromFirebase(d))
         .toList();
     deck._usedPile = (data['usedPile'] as List)
+        .map((d) => Destination.fromFirebase(d))
+        .toList();
+    deck._pendingSelection = ((data['pendingSelection'] as List?) ?? [])
         .map((d) => Destination.fromFirebase(d))
         .toList();
     return deck;

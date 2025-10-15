@@ -6,12 +6,12 @@ import 'player_screen.dart';
 
 class ChooseDestination extends StatefulWidget {
   final bool isInitialSelection;
-  final int? playerIndex; // <<< ADD NEW FIELD
+  final int? playerIndex;
 
   const ChooseDestination({
     super.key,
     this.isInitialSelection = true,
-    this.playerIndex, // <<< ADD TO CONSTRUCTOR
+    this.playerIndex,
   });
 
   @override
@@ -22,22 +22,57 @@ class _ChooseDestinationState extends State<ChooseDestination> {
   List<Destination> _availableDestinations = [];
   List<Destination> _selectedDestinations = [];
   bool _isLoading = true;
+  bool _hasSubmitted = false;
+  bool _destinationsLoaded = false; // NEW: Track if we've loaded destinations
 
   @override
   void initState() {
     super.initState();
+    print('=== ChooseDestination initState called ===');
+    print('Widget hash: ${widget.hashCode}');
+    print('State hash: ${hashCode}');
     _loadDestinations();
   }
 
+  @override
+  void didUpdateWidget(ChooseDestination oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    print('=== ChooseDestination didUpdateWidget called ===');
+    print('Old widget hash: ${oldWidget.hashCode}');
+    print('New widget hash: ${widget.hashCode}');
+    print('State hash: ${hashCode}');
+    print('_destinationsLoaded: $_destinationsLoaded');
+  }
+
+  @override
+  void dispose() {
+    print('=== ChooseDestination dispose called ===');
+    print('State hash: ${hashCode}');
+    super.dispose();
+  }
+
   void _loadDestinations() {
+    print('=== _loadDestinations called ===');
+    print('_destinationsLoaded: $_destinationsLoaded');
+    print('_availableDestinations.length: ${_availableDestinations.length}');
+    
+    // Only load once
+    if (_destinationsLoaded) {
+      print('Skipping load - already loaded');
+      return;
+    }
+    
     final gameProvider = Provider.of<GameProvider>(context, listen: false);
 
+    print('Actually loading destinations...');
     // Get 3 new destinations for selection
     _availableDestinations = gameProvider.getNewDestinations();
+    _destinationsLoaded = true;
 
-    // Debug info
     print('Loaded ${_availableDestinations.length} destinations for selection');
+    print('Player index: ${widget.playerIndex}');
     print('Is initial selection: ${widget.isInitialSelection}');
+    print('Destinations: ${_availableDestinations.map((d) => d.shortName).join(", ")}');
 
     setState(() {
       _isLoading = false;
@@ -46,13 +81,32 @@ class _ChooseDestinationState extends State<ChooseDestination> {
 
   @override
   Widget build(BuildContext context) {
+    print('=== ChooseDestination build called ===');
+    print('State hash: ${hashCode}');
+    print('_destinationsLoaded: $_destinationsLoaded');
+    print('_availableDestinations.length: ${_availableDestinations.length}');
+    
     final screenSize = MediaQuery.of(context).size;
+    // Use listen: false to prevent rebuilds from Firebase
+    final gameProvider = Provider.of<GameProvider>(context, listen: false);
+    
+    // Determine which player is selecting
+    final effectivePlayerIndex = widget.playerIndex ?? gameProvider.myPlayerIndex;
+    
+    if (effectivePlayerIndex == null || effectivePlayerIndex >= gameProvider.players.length) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Error')),
+        body: const Center(child: Text('Player not found')),
+      );
+    }
+
+    final player = gameProvider.players[effectivePlayerIndex];
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Choose Destination'),
+        title: Text('${player.name} - Choose Destinations'),
         centerTitle: true,
-        backgroundColor: Colors.blue[800],
+        backgroundColor: player.color,
         foregroundColor: Colors.white,
       ),
       body: _isLoading
@@ -64,7 +118,6 @@ class _ChooseDestinationState extends State<ChooseDestination> {
                 children: [
                   SizedBox(height: screenSize.height * 0.02),
 
-                  // Instructions
                   Text(
                     widget.isInitialSelection
                         ? 'Choose destinations to keep (2-3 cards):'
@@ -78,7 +131,6 @@ class _ChooseDestinationState extends State<ChooseDestination> {
 
                   SizedBox(height: screenSize.height * 0.03),
 
-                  // Destination cards
                   Expanded(
                     child: ListView.builder(
                       itemCount: _availableDestinations.length,
@@ -86,11 +138,8 @@ class _ChooseDestinationState extends State<ChooseDestination> {
                         final destination = _availableDestinations[index];
                         final isSelected =
                             _selectedDestinations.contains(destination);
-                        final maxSelection =
-                            3; // Both initial and mid-game allow up to 3 cards
                         final canSelect =
-                            _selectedDestinations.length < maxSelection ||
-                                isSelected;
+                            _selectedDestinations.length < 3 || isSelected;
 
                         return Container(
                           margin:
@@ -141,7 +190,6 @@ class _ChooseDestinationState extends State<ChooseDestination> {
 
                   SizedBox(height: screenSize.height * 0.02),
 
-                  // Selection info
                   Container(
                     padding: EdgeInsets.all(screenSize.width * 0.03),
                     decoration: BoxDecoration(
@@ -176,9 +224,8 @@ class _ChooseDestinationState extends State<ChooseDestination> {
 
                   SizedBox(height: screenSize.height * 0.02),
 
-                  // Submit button
                   ElevatedButton(
-                    onPressed: _canSubmit() ? _submit : null,
+                    onPressed: _canSubmit() && !_hasSubmitted ? _submit : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue[800],
                       foregroundColor: Colors.white,
@@ -190,7 +237,7 @@ class _ChooseDestinationState extends State<ChooseDestination> {
                       ),
                     ),
                     child: Text(
-                      'Submit Selection',
+                      _hasSubmitted ? 'Submitting...' : 'Submit Selection',
                       style: TextStyle(
                         fontSize: screenSize.width * 0.05,
                         fontWeight: FontWeight.bold,
@@ -210,7 +257,6 @@ class _ChooseDestinationState extends State<ChooseDestination> {
       if (_selectedDestinations.contains(destination)) {
         _selectedDestinations.remove(destination);
       } else {
-        // Allow up to 3 cards for both initial and mid-game selection
         if (_selectedDestinations.length < 3) {
           _selectedDestinations.add(destination);
         }
@@ -220,76 +266,99 @@ class _ChooseDestinationState extends State<ChooseDestination> {
 
   bool _canSubmit() {
     if (widget.isInitialSelection) {
-      // Initial selection: must keep 2-3 cards
       return _selectedDestinations.length >= 2 &&
           _selectedDestinations.length <= 3;
     } else {
-      // Mid-game selection: must keep 1-3 cards
       return _selectedDestinations.length >= 1 &&
           _selectedDestinations.length <= 3;
     }
   }
 
-  void _submit() async { // Needs to be async because it calls async methods
-  if (_canSubmit() && widget.playerIndex != null) {
-    final gameProvider = Provider.of<GameProvider>(context, listen: false);
+  void _submit() async {
+    if (!_canSubmit() || _hasSubmitted) return;
 
-    if (widget.playerIndex! >= gameProvider.players.length) {
-        // Handle error: Player not found at index
-        return;
+    setState(() {
+      _hasSubmitted = true;
+    });
+
+    final gameProvider = Provider.of<GameProvider>(context, listen: false);
+    final effectivePlayerIndex = widget.playerIndex ?? gameProvider.myPlayerIndex;
+
+    if (effectivePlayerIndex == null || effectivePlayerIndex >= gameProvider.players.length) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error: Player identity lost. Please rejoin.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
     }
+
+    final player = gameProvider.players[effectivePlayerIndex];
     
-    // Define player once for both initial and mid-game logic
-    final player = gameProvider.players[widget.playerIndex!]; 
-    
-    // Prepare the cards that were *not* selected
-    // Note: This requires getting the full list of cards dealt in _loadDestinations, 
-    // and subtracting the selected ones. For now, we assume _availableDestinations 
-    // holds the full dealt set.
+    // Cards that were not selected go back to used pile
     final unselectedDestinations = _availableDestinations.where(
       (d) => !_selectedDestinations.contains(d)
     ).toList();
 
+    try {
+      if (widget.isInitialSelection) {
+        // Initial setup: no turn ends
+        await gameProvider.addSelectedDestinationsSetup(
+            player, _selectedDestinations, unselectedDestinations);
 
-    if (widget.isInitialSelection) {
-      // 1. Initial Setup: No turn ends, just setup player hand and return cards
-      await gameProvider.addSelectedDestinationsSetup(
-          player, _selectedDestinations, unselectedDestinations); 
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Selected ${_selectedDestinations.length} destination(s)',
+              ),
+            ),
+          );
 
-      // Navigate to the player screen
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(
-          builder: (context) => PlayerScreen(
-            playerIndex: widget.playerIndex!,
+          // Navigate to player screen
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PlayerScreen(
+                playerIndex: effectivePlayerIndex,
+              ),
+            ),
+            (route) => false,
+          );
+        }
+      } else {
+        // Mid-game: turn ends after selection
+        await gameProvider.completeDestinationSelection(
+            player, _selectedDestinations, unselectedDestinations);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Selected ${_selectedDestinations.length} destination(s)',
+              ),
+            ),
+          );
+
+          Navigator.of(context).pop();
+        }
+      }
+    } catch (e) {
+      print('Error submitting destinations: $e');
+      if (mounted) {
+        setState(() {
+          _hasSubmitted = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
           ),
-        ),
-        (route) => false,
-      );
-    } else {
-      // 2. Mid-Game Turn: Turn ends after selection
-      await gameProvider.completeDestinationSelection(
-          player, _selectedDestinations, unselectedDestinations); 
-
-      // Pop back to the map/player view
-      Navigator.of(context).pop(); 
-    }
-    
-    // Show confirmation
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Selected ${_selectedDestinations.length} destination(s)',
-        ),
-      ),
-    );
-  } else {
-      // Handle error if index is missing (e.g., initial join failed)
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Error: Player identity lost. Please rejoin.'),
-        ),
-      );
+        );
+      }
     }
   }
 }

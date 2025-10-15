@@ -40,6 +40,15 @@ class _Entrance extends State<Entrance> {
 
   @override
   Widget build(BuildContext context) {
+    // 1. Access the AuthService using Provider.of, setting listen: true
+    //    so the widget rebuilds when the authentication state changes.
+    final authService = Provider.of<AuthService>(context);
+    
+    // 2. Get the current user. Assuming AuthService has a 'currentUser' property
+    //    that returns a user object (which has an 'email' property).
+    //    If the user is not logged in, this will likely be null.
+    final userEmail = authService.currentUser?.email ?? 'Guest';
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Ticket to Ride'),
@@ -61,9 +70,9 @@ class _Entrance extends State<Entrance> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
-              'Welcome to Ticket to Ride!',
-              style: TextStyle(
+            Text(
+              'Welcome to Ticket to Ride! $userEmail',
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),

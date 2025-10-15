@@ -6,6 +6,7 @@ import 'destination.dart';
 class Player {
   final String name;
   final Color color;
+  final String userId; // NEW: Add userId to identify player
   int numberOfTrains;
   List<game_card.Card> handOfCards;
   List<Destination> handOfDestinationCards;
@@ -14,6 +15,7 @@ class Player {
   Player({
     required this.name,
     required this.color,
+    required this.userId, // NEW: Required parameter
     this.numberOfTrains = 45,
     List<game_card.Card>? handOfCards,
     List<Destination>? handOfDestinationCards,
@@ -41,32 +43,29 @@ class Player {
     }
   }
 
-  // Method to use a card (moves it to used pile)
-  // void useCard(game_card.Card card, Deck deck) {
-  //   handOfCards.remove(card);
-  //   deck.addToUsedPile(card);
-  // }
-
   @override
   String toString() {
-    return 'Player(name: $name, color: $color, trains: $numberOfTrains, cards: ${handOfCards.length})';
+    return 'Player(name: $name, userId: $userId, color: $color, trains: $numberOfTrains, cards: ${handOfCards.length})';
   }
 
   // Firebase serialization
   Map<String, dynamic> toFirebase() {
     return {
       'name': name,
+      'userId': userId, // NEW: Include userId
       'color': color.value,
       'numberOfTrains': numberOfTrains,
       'handOfCards': handOfCards.map((c) => c.toFirebase()).toList(),
       'handOfDestinationCards':
           handOfDestinationCards.map((c) => c.toFirebase()).toList(),
+      'score': score,
     };
   }
 
   factory Player.fromFirebase(Map<String, dynamic> data) {
     return Player(
       name: data['name'] as String,
+      userId: data['userId'] as String, // NEW: Read userId
       color: Color(data['color'] as int),
       numberOfTrains: data['numberOfTrains'] as int,
       handOfCards: (data['handOfCards'] as List)
@@ -75,6 +74,7 @@ class Player {
       handOfDestinationCards: (data['handOfDestinationCards'] as List)
           .map((d) => Destination.fromFirebase(d))
           .toList(),
+      score: data['score'] ?? 0,
     );
   }
 }

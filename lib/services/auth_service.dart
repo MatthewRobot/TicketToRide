@@ -7,9 +7,12 @@ class AuthService {
   /// Stream of the current authenticated user.
   Stream<User?> get user => _auth.authStateChanges();
 
+  User? get currentUser => _auth.currentUser;
+
   /// Creates a new user with email and password.
   /// Throws a FirebaseAuthException on failure (e.g., email already in use).
-  Future<User?> signUp({required String email, required String password}) async {
+  Future<User?> signUp(
+      {required String email, required String password}) async {
     try {
       final credential = await _auth.createUserWithEmailAndPassword(
         email: email,
@@ -25,7 +28,8 @@ class AuthService {
 
   /// Signs in an existing user with email and password.
   /// Throws a FirebaseAuthException on failure (e.g., wrong password).
-  Future<User?> signIn({required String email, required String password}) async {
+  Future<User?> signIn(
+      {required String email, required String password}) async {
     try {
       final credential = await _auth.signInWithEmailAndPassword(
         email: email,

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
 import 'choose_destination.dart';
-import 'choose_destination.dart';
 
 class ChooseColorName extends StatefulWidget {
   const ChooseColorName({super.key});
@@ -34,6 +33,18 @@ class _ChooseColorNameState extends State<ChooseColorName> {
     final screenSize = MediaQuery.of(context).size;
     final gameProvider = Provider.of<GameProvider>(context);
 
+    // Check if this user already joined
+    if (gameProvider.myPlayerIndex != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const WaitingForGameStart(),
+          ),
+        );
+      });
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Choose Color & Name'),
@@ -48,7 +59,6 @@ class _ChooseColorNameState extends State<ChooseColorName> {
           children: [
             SizedBox(height: screenSize.height * 0.02),
 
-            // Choose Name Section
             Text(
               'Choose Name',
               style: TextStyle(
@@ -58,7 +68,6 @@ class _ChooseColorNameState extends State<ChooseColorName> {
             ),
             SizedBox(height: screenSize.height * 0.02),
 
-            // Name Input Field
             TextField(
               controller: _nameController,
               decoration: InputDecoration(
@@ -76,7 +85,6 @@ class _ChooseColorNameState extends State<ChooseColorName> {
 
             SizedBox(height: screenSize.height * 0.04),
 
-            // Choose Color Section
             Text(
               'Choose Color',
               style: TextStyle(
@@ -86,12 +94,10 @@ class _ChooseColorNameState extends State<ChooseColorName> {
             ),
             SizedBox(height: screenSize.height * 0.02),
 
-            // Color Selection
             _buildColorSelector(gameProvider),
 
             SizedBox(height: screenSize.height * 0.05),
 
-            // Submit Button
             ElevatedButton(
               onPressed: _canSubmit() ? _submit : null,
               style: ElevatedButton.styleFrom(
@@ -115,7 +121,6 @@ class _ChooseColorNameState extends State<ChooseColorName> {
 
             SizedBox(height: screenSize.height * 0.02),
 
-            // Info text
             Text(
               'You will select destination cards after the host starts the game',
               style: TextStyle(
@@ -141,19 +146,22 @@ class _ChooseColorNameState extends State<ChooseColorName> {
       final playerName = _nameController.text.trim();
       final playerColor = _selectedColor!;
 
-      // Final check to ensure the color hasn't been taken
-      if (gameProvider.players.any((p) => p.color == playerColor)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Color was just taken. Please choose another.')),
-        );
+      // Attempt to add player (will fail if color taken)
+      final success = await gameProvider.addPlayer(playerName, playerColor);
+
+      if (!success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Color was just taken or you already joined. Please choose another.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
         return;
       }
 
-      // Add the player to the game state
-      gameProvider.addPlayer(playerName, playerColor);
-
-      // Show success message and navigate to waiting screen
+      // Success - navigate to waiting screen
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -162,7 +170,6 @@ class _ChooseColorNameState extends State<ChooseColorName> {
           ),
         );
 
-        // Navigate to a waiting screen instead of destination selection
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -174,8 +181,17 @@ class _ChooseColorNameState extends State<ChooseColorName> {
   }
 
   Widget _buildColorSelector(GameProvider gameProvider) {
-    // Get colors already taken by other players
+    // Get colors already taken by other players (real-time)
     final takenColors = gameProvider.players.map((p) => p.color).toSet();
+
+    // Auto-deselect if color was taken
+    if (_selectedColor != null && takenColors.contains(_selectedColor)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        setState(() {
+          _selectedColor = null;
+        });
+      });
+    }
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -213,32 +229,42 @@ class _ChooseColorNameState extends State<ChooseColorName> {
   }
 }
 
-// NEW: Waiting screen that players see after joining
-class WaitingForGameStart extends StatelessWidget {
+class WaitingForGameStart extends StatefulWidget {
   const WaitingForGameStart({super.key});
+
+  @override
+  State<WaitingForGameStart> createState() => _WaitingForGameStartState();
+}
+
+class _WaitingForGameStartState extends State<WaitingForGameStart> {
+  bool _hasNavigated = false;
 
   @override
   Widget build(BuildContext context) {
     final gameProvider = Provider.of<GameProvider>(context);
 
+    print('=== WaitingForGameStart build ===');
+    print('Game started: ${gameProvider.gameStarted}');
+    print('My player index: ${gameProvider.myPlayerIndex}');
+    print('Has navigated: $_hasNavigated');
+
     // Once game starts, navigate to destination selection
-    if (gameProvider.gameStarted) {
-      // Find this player's index
-      // Note: This is a simplified approach. In production, you'd want to identify
-      // players by a unique ID rather than relying on list order
+    if (gameProvider.gameStarted && gameProvider.myPlayerIndex != null && !_hasNavigated) {
+      print('Navigating to ChooseDestination...');
+      _hasNavigated = true;
+      
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        // Get the current player (last in the list, the one who just joined)
-        final playerIndex = gameProvider.players.length - 1;
-        
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ChooseDestination(
-              isInitialSelection: true,
-              playerIndex: playerIndex,
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ChooseDestination(
+                isInitialSelection: true,
+                playerIndex: gameProvider.myPlayerIndex!,
+              ),
             ),
-          ),
-        );
+          );
+        }
       });
     }
 
@@ -272,7 +298,6 @@ class WaitingForGameStart extends StatelessWidget {
             ),
             const SizedBox(height: 30),
             
-            // Show all players in the lobby
             Container(
               padding: const EdgeInsets.all(20),
               margin: const EdgeInsets.symmetric(horizontal: 32),
@@ -292,6 +317,8 @@ class WaitingForGameStart extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   ...gameProvider.players.map((player) {
+                    final isMe = gameProvider.myPlayerIndex != null && 
+                                gameProvider.players[gameProvider.myPlayerIndex!].userId == player.userId;
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 6),
                       child: Row(
@@ -311,10 +338,10 @@ class WaitingForGameStart extends StatelessWidget {
                           ),
                           const SizedBox(width: 12),
                           Text(
-                            player.name,
-                            style: const TextStyle(
+                            player.name + (isMe ? ' (You)' : ''),
+                            style: TextStyle(
                               fontSize: 16,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: isMe ? FontWeight.bold : FontWeight.w500,
                             ),
                           ),
                         ],
