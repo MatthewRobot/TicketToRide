@@ -16,7 +16,7 @@ class GameProvider with ChangeNotifier {
 
   // Firebase references
   DocumentReference? _gameRef;
-  
+
   GameProvider({required String userId}) : _userId = userId;
 
   void updateUserId(String userId) {
@@ -43,7 +43,7 @@ class GameProvider with ChangeNotifier {
   Future<void> connectToGame(String gameId) async {
     _gameId = gameId;
     _gameRef = FirebaseFirestore.instance.collection('games').doc(gameId);
-    
+
     // Listen to game state changes
     _gameRef!.snapshots().listen((snapshot) {
       if (snapshot.exists) {
@@ -59,39 +59,92 @@ class GameProvider with ChangeNotifier {
     final newGameRef = FirebaseFirestore.instance.collection('games').doc();
     _gameId = newGameRef.id;
     _gameRef = newGameRef;
-    
+
     // Initialize empty game
     _gameManager = GameManager();
     await _loadRoutes();
     await saveGame();
-    
+
     // Start listening
     await connectToGame(_gameId!);
-    
+
     return _gameId!;
   }
 
   // Add player with unique ID
+  // Future<bool> addPlayer(String name, Color color) async {
+  //   if (_myPlayerId != null) {
+  //     // This user already has a player
+  //     return false;
+  //   }
+
+  //   // Check if color is taken (real-time check)
+  //   if (_gameManager.players.any((p) => p.color == color)) {
+  //     return false;
+  //   }
+
+  //   // Create player with userId as identifier
+  //   _myPlayerId = _userId;
+
+  //   // Use GameManager's addPlayer method
+  //   _gameManager.addPlayer(name, color, _userId);
+
+  //   await saveGame();
+  //   notifyListeners();
+  //   return true;
+  // }
+
+  //new transaction method so that players don't choose same color
+  // Add player with unique ID using a transaction to prevent race conditions
   Future<bool> addPlayer(String name, Color color) async {
     if (_myPlayerId != null) {
       // This user already has a player
       return false;
     }
 
-    // Check if color is taken (real-time check)
-    if (_gameManager.players.any((p) => p.color == color)) {
+    if (_gameRef == null) {
+      // Should not happen if connected to a game
       return false;
     }
 
-    // Create player with userId as identifier
-    _myPlayerId = _userId;
-    
-    // Use GameManager's addPlayer method
-    _gameManager.addPlayer(name, color, _userId);
-    
-    await saveGame();
-    notifyListeners();
-    return true;
+    // Use a transaction to ensure atomic color selection
+    try {
+      await _gameRef!.firestore.runTransaction((transaction) async {
+        // 1. Read the current game state within the transaction
+        DocumentSnapshot snapshot = await transaction.get(_gameRef!);
+        if (!snapshot.exists) {
+          throw Exception("Game does not exist.");
+        }
+
+        final data = snapshot.data() as Map<String, dynamic>;
+        final currentManager = GameManager.fromFirebase(data);
+
+        // 2. Check if the color is taken (transactional read)
+        if (currentManager.players.any((p) => p.color.value == color.value)) {
+          // Throw an error to stop the transaction and return false
+          throw Exception('Color already taken.');
+        }
+
+        // 3. Update the game state (transactional write)
+        _myPlayerId = _userId;
+        currentManager.addPlayer(name, color, _userId);
+
+        // 4. Write the updated state back
+        transaction.set(_gameRef!, currentManager.toFirebase());
+
+        // Update the local state after successful transaction
+        _gameManager = currentManager;
+      });
+
+      // The transaction was successful
+      notifyListeners();
+      return true;
+    } catch (e) {
+      // Catch exceptions from the transaction (including 'Color already taken.')
+      print('Transaction failed: $e');
+      _myPlayerId = null; // Ensure ID is not set if transaction failed
+      return false;
+    }
   }
 
   Future<void> startGame() async {
@@ -108,19 +161,19 @@ class GameProvider with ChangeNotifier {
   List<Destination> getNewDestinations() {
     print('=== GameProvider.getNewDestinations called ===');
     print('Stack size before: ${_gameManager.destinationDeck.stackSize}');
-    
+
     final destinations = _gameManager.getNewDestinations();
-    
+
     print('Drew ${destinations.length} destinations');
     print('Destinations: ${destinations.map((d) => d.shortName).join(", ")}');
     print('Stack size after: ${_gameManager.destinationDeck.stackSize}');
-    
+
     // Save immediately so other players can't get the same cards
     // The destinations are marked as "pending" in the deck
     print('Calling saveGame...');
     saveGame();
     print('saveGame completed');
-    
+
     return destinations;
   }
 
@@ -152,10 +205,10 @@ class GameProvider with ChangeNotifier {
   // Draw ONE card from deck
   void drawCardFromDeck(int playerIndex) {
     if (playerIndex >= _gameManager.players.length) return;
-    
+
     final player = _gameManager.players[playerIndex];
     final card = _gameManager.deck.drawCard();
-    
+
     if (card != null) {
       player.handOfCards.add(card);
       saveGame();
@@ -166,7 +219,7 @@ class GameProvider with ChangeNotifier {
   // Take card from table
   void takeCardFromTable(int playerIndex, int tableIndex) {
     if (playerIndex >= _gameManager.players.length) return;
-    
+
     _gameManager.playerTakeFromTable(
       _gameManager.players[playerIndex],
       tableIndex,
@@ -203,7 +256,7 @@ class GameProvider with ChangeNotifier {
   // Save game state to Firebase
   Future<void> saveGame() async {
     if (_gameRef == null) return;
-    
+
     try {
       await _gameRef!.set(_gameManager.toFirebase());
     } catch (e) {
@@ -213,13 +266,15 @@ class GameProvider with ChangeNotifier {
 
   Future<void> _loadRoutes() async {
     try {
-      final String jsonString = await rootBundle.loadString('assets/map_info.JSON');
+      final String jsonString =
+          await rootBundle.loadString('assets/map_info.JSON');
       final Map<String, dynamic> jsonData = json.decode(jsonString);
       final List<dynamic> routesJson = jsonData['routes'] ?? [];
 
-      final routes = routesJson.map((json) => TrainRoute.fromJson(json)).toList();
+      final routes =
+          routesJson.map((json) => TrainRoute.fromJson(json)).toList();
       _gameManager.setAllRoutes(routes);
-      
+
       for (var route in routes) {
         _gameManager.routeOwners[route.id] = null;
       }
@@ -237,13 +292,13 @@ class GameProvider with ChangeNotifier {
   // Test game initialization
   void initializeTestGame() {
     _gameManager = GameManager();
-    
+
     // Generate test user IDs
     _gameManager.addPlayer('Player 1', Colors.red, 'test_user_1');
     _gameManager.addPlayer('Player 2', Colors.blue, 'test_user_2');
     _gameManager.addPlayer('Player 3', Colors.green, 'test_user_3');
     _gameManager.addPlayer('Player 4', Colors.yellow, 'test_user_4');
-    
+
     _loadRoutes();
     saveGame();
     notifyListeners();
