@@ -288,7 +288,9 @@ class _ChooseDestinationState extends State<ChooseDestination> {
     }
   }
 
-  void _submit() async {
+  // In choose_destination.dart
+
+void _submit() async {
     if (!_canSubmit() || _hasSubmitted) return;
 
     setState(() {
@@ -320,20 +322,28 @@ class _ChooseDestinationState extends State<ChooseDestination> {
         .toList();
 
     try {
-      // Initial setup: no turn ends
-      await gameProvider.completeDestinationSelection(
-          player, _selectedDestinations, unselectedDestinations);
-      if (widget.isInitialSelection) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Selected ${_selectedDestinations.length} destination(s)',
-              ),
-            ),
-          );
+      // Determine the endTurn flag: 
+      // Initial selection (true) should NOT end the turn (endTurn: false)
+      // Mid-game draw (false) SHOULD end the draw phase (endTurn: true)
+      final shouldEndTurn = !widget.isInitialSelection;
 
-          // Navigate to player screen
+      // Call the GameProvider method ONCE with the correct flag.
+      // This handles saving to Firebase, updating local state, and calling nextTurn() if shouldEndTurn is true.
+      await gameProvider.completeDestinationSelection(
+          player, _selectedDestinations, unselectedDestinations,
+          endTurn: shouldEndTurn); 
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Selected ${_selectedDestinations.length} destination(s)',
+            ),
+          ),
+        );
+
+        if (widget.isInitialSelection) {
+          // Initial Selection: Navigate to PlayerScreen without ending the turn.
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(
@@ -343,21 +353,8 @@ class _ChooseDestinationState extends State<ChooseDestination> {
             ),
             (route) => false,
           );
-        }
-      } else {
-        // Mid-game: turn ends after selection
-        await gameProvider.completeDestinationSelection(
-            player, _selectedDestinations, unselectedDestinations);
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Selected ${_selectedDestinations.length} destination(s)',
-              ),
-            ),
-          );
-
+        } else {
+          // Mid-game: Pop back to the main game screen (turn advanced in GameProvider).
           Navigator.of(context).pop();
         }
       }
@@ -375,5 +372,5 @@ class _ChooseDestinationState extends State<ChooseDestination> {
         );
       }
     }
-  }
+}
 }

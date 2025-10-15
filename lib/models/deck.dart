@@ -14,7 +14,7 @@ class Deck {
 
   void _initializeDeck() {
     _stack.clear();
-    
+
     // Add cards according to the specified counts
     final cardCounts = {
       CardType.pink: 12,
@@ -72,7 +72,7 @@ class Deck {
     if (_stack.isEmpty) {
       _reshuffleUsedPile();
     }
-    
+
     if (_stack.isNotEmpty) {
       return _stack.removeAt(0);
     }
@@ -82,14 +82,39 @@ class Deck {
   // Take a card from the table
   Card? takeCardFromTable(int tableIndex) {
     if (tableIndex >= 0 && tableIndex < _table.length) {
+      // 1. Remove the card the player is taking
       final card = _table.removeAt(tableIndex);
-      
-      // Replace with a card from the stack
+
+      // 2. Replace with a card from the stack
+      // The replacement logic must ensure the table is always full (5 cards)
       final replacementCard = drawCard();
       if (replacementCard != null) {
-        _table.insert(tableIndex, Card(type: replacementCard.type, isVisible: true));
+        _table.insert(
+            tableIndex, Card(type: replacementCard.type, isVisible: true));
       }
-      
+
+      // 3. --- CORRECTED LOGIC: Check for Rainbow Card Flush *AFTER* replacement ---
+      // We loop in case the reshuffle results in another flush condition
+      while (_table.length == 5 &&
+          _table.where((c) => c.type == CardType.rainbow).length >= 3) {
+        print(
+            'Flushing table: 3 or more Rainbow cards detected after replacement.');
+
+        // Move all current table cards to the used pile
+        _usedPile.addAll(_table);
+        _table.clear();
+
+        // Replace with 5 new cards from the stack
+        for (int i = 0; i < 5; i++) {
+          final newCard = drawCard();
+          if (newCard != null) {
+            _table.add(Card(type: newCard.type, isVisible: true));
+          } else {
+            break;
+          }
+        }
+      }
+
       return card;
     }
     return null;
@@ -131,15 +156,12 @@ class Deck {
 
   factory Deck.fromFirebase(Map<String, dynamic> data) {
     final deck = Deck();
-    deck._stack = (data['stack'] as List)
-        .map((c) => Card.fromFirebase(c))
-        .toList();
-    deck._table = (data['table'] as List)
-        .map((c) => Card.fromFirebase(c))
-        .toList();
-    deck._usedPile = (data['usedPile'] as List)
-        .map((c) => Card.fromFirebase(c))
-        .toList();
+    deck._stack =
+        (data['stack'] as List).map((c) => Card.fromFirebase(c)).toList();
+    deck._table =
+        (data['table'] as List).map((c) => Card.fromFirebase(c)).toList();
+    deck._usedPile =
+        (data['usedPile'] as List).map((c) => Card.fromFirebase(c)).toList();
     return deck;
   }
 }

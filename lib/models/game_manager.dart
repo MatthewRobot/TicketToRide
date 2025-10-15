@@ -51,6 +51,9 @@ class GameManager {
 
   // Add a player to the game - UPDATED to include userId
   void addPlayer(String name, Color color, String userId) {
+    if (players.any((p) => p.userId == userId)) {
+        return; // Already added
+    }
     if (!gameStarted) {
       players.add(Player(
         name: name, 

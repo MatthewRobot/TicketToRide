@@ -12,7 +12,9 @@ class GameProvider with ChangeNotifier {
   GameManager _gameManager = GameManager();
   String _userId = '';
   String? _gameId;
-  String? _myPlayerId; // NEW: Track which player this user is
+  String? _myPlayerId;
+  int _cardsDrawnThisTurn = 0;
+  bool _drewRainbowFromTable = false;
 
   // Firebase references
   DocumentReference? _gameRef;
@@ -39,6 +41,8 @@ class GameProvider with ChangeNotifier {
   bool get isGameOver => _gameManager.isGameOver;
   String? get gameId => _gameId;
   String get userId => _userId;
+  int get cardsDrawnThisTurn => _cardsDrawnThisTurn;
+  bool get drewRainbowFromTable => _drewRainbowFromTable;
 
   // NEW: Getters for draw rules
   static const int _initialDrawCount = 3;
@@ -59,6 +63,16 @@ class GameProvider with ChangeNotifier {
       if (snapshot.exists) {
         final data = snapshot.data() as Map<String, dynamic>;
         _gameManager = GameManager.fromFirebase(data);
+        // try {
+        //   final myPlayer = _gameManager.players.firstWhere(
+        //     (p) => p.userId == _userId,
+        //   );
+        //   _myPlayerId = myPlayer.userId;
+        // } catch (e) {
+        //   // Player not found in this game yet, keep _myPlayerId as null
+        //   _myPlayerId = null;
+        //   print('User ID $_userId not found in game players list.');
+        // }
         notifyListeners();
       }
     });
@@ -214,7 +228,6 @@ class GameProvider with ChangeNotifier {
 
   // game_provider.dart
 
-
 // **--- TRANSACTIONAL METHODS FOR DESTINATION CARDS ---**
 
   /// Transactional method for initial draw (Player must keep 2 or 3)
@@ -292,8 +305,9 @@ class GameProvider with ChangeNotifier {
   /// Completes the destination selection and updates the game state.
   /// This method also needs to be transactional, but for simplicity, we use the
   /// existing saveGame if it doesn't overlap with a deck draw.
-  Future<void> completeDestinationSelection(Player player,
-      List<Destination> selected, List<Destination> unselected) async {
+  Future<void> completeDestinationSelection(
+      Player player, List<Destination> selected, List<Destination> unselected,
+      {bool endTurn = false}) async {
     if (_gameRef == null || myPlayerIndex == null) return;
 
     // This is also a CRITICAL WRITE, but since it doesn't depend on *reading*
@@ -323,8 +337,13 @@ class GameProvider with ChangeNotifier {
       // Update local state
       player.handOfDestinationCards.addAll(selected);
       player.pendingDestinations.clear();
-      notifyListeners();
 
+      if (endTurn) {
+        nextTurn();
+        return;
+      }
+      await saveGame();
+      notifyListeners();
       // The game loop logic (e.g., nextTurn) should be handled by the UI after this resolves.
     } catch (e) {
       print('Transaction failed for completeDestinationSelection: $e');
@@ -333,7 +352,13 @@ class GameProvider with ChangeNotifier {
   }
 
   // Draw ONE card from deck
-  void drawCardFromDeck(int playerIndex) {
+  void drawCardFromDeck(int playerIndex) async {
+    // Enforce the rule checks
+    if (!canDrawDeckCard) {
+      print('Draw from deck failed: Draw limit reached or rainbow taken.');
+      return;
+    }
+
     if (playerIndex >= _gameManager.players.length) return;
 
     final player = _gameManager.players[playerIndex];
@@ -341,20 +366,43 @@ class GameProvider with ChangeNotifier {
 
     if (card != null) {
       player.handOfCards.add(card);
-      saveGame();
+
+      _cardsDrawnThisTurn++;
+
+      await saveGame();
       notifyListeners();
     }
   }
 
-  // Take card from table
-  void takeCardFromTable(int playerIndex, int tableIndex) {
+// Take card from table
+  void takeCardFromTable(int playerIndex, int tableIndex) async {
+    // Enforce the rule checks
+    if (!canTakeTableCard(tableIndex)) {
+      print('Take from table failed: Invalid draw action.');
+      return;
+    }
+
     if (playerIndex >= _gameManager.players.length) return;
+
+    final cardToTake = _gameManager.visibleTableCards[tableIndex];
 
     _gameManager.playerTakeFromTable(
       _gameManager.players[playerIndex],
       tableIndex,
     );
-    saveGame();
+
+    _cardsDrawnThisTurn++;
+    if (cardToTake.type == game_card.CardType.rainbow) {
+      // If the player took a Rainbow, it MUST be their first draw
+      if (_cardsDrawnThisTurn == 1) {
+        _drewRainbowFromTable = true;
+      } else {
+        // This case should be caught by canTakeTableCard, but for safety:
+        print('ERROR: Took rainbow as second card.');
+      }
+    }
+
+    await saveGame();
     notifyListeners();
   }
 
@@ -370,17 +418,59 @@ class GameProvider with ChangeNotifier {
     );
 
     if (success) {
-      saveGame();
-      notifyListeners();
+      nextTurn();
     }
 
     return success;
   }
 
   void nextTurn() {
+    // Reset draw state before advancing turn
+    _cardsDrawnThisTurn = 0;
+    _drewRainbowFromTable = false;
+
     _gameManager.nextTurn();
     saveGame();
     notifyListeners();
+  }
+
+  // In game_provider.dart
+
+  bool get canDrawDeckCard {
+    if (_cardsDrawnThisTurn >= 2) {
+      // This is the source of your "Draw limit reached" error.
+      print('DBG: Draw deck fail: Cards drawn ($_cardsDrawnThisTurn) >= 2.');
+      return false;
+    }
+    if (_drewRainbowFromTable) {
+      print('DBG: Draw deck fail: Already drew table rainbow.');
+      return false;
+    }
+    print('DBG: Draw deck SUCCESS.');
+    return true;
+  }
+
+  bool canTakeTableCard(int tableIndex) {
+    if (cardsDrawnThisTurn >= 2) {
+      print('DBG: Draw table fail: Cards drawn ($_cardsDrawnThisTurn) >= 2.');
+      return false;
+    }
+
+    if (drewRainbowFromTable) {
+      print('DBG: Draw table fail: Already drew table rainbow.');
+      return false;
+    }
+
+    final card = _gameManager.visibleTableCards[tableIndex];
+
+    // Cannot take a Rainbow card as the second draw
+    if (card.type == game_card.CardType.rainbow && cardsDrawnThisTurn == 1) {
+      print('DBG: Draw table fail: Already drew table rainbow.');
+      return false;
+    }
+    print('DBG: Draw table SUCCESS.');
+
+    return true;
   }
 
   // Save game state to Firebase
