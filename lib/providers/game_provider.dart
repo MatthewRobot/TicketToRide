@@ -38,6 +38,16 @@ class GameProvider with ChangeNotifier {
   int get currentPlayerIndex => _gameManager.currentPlayerIndex;
   bool get isGameOver => _gameManager.isGameOver;
   String? get gameId => _gameId;
+  String get userId => _userId;
+
+  // NEW: Getters for draw rules
+  static const int _initialDrawCount = 3;
+  static const int _midGameDrawCount = 3;
+
+  // NEW: Minimum keep for initial setup (Keep 2-3 of 3)
+  static const int minKeepInitial = 2;
+  // NEW: Minimum keep for mid-game draw (Keep 1-3 of 3)
+  static const int minKeepMidGame = 1;
 
   // Connect to a game session
   Future<void> connectToGame(String gameId) async {
@@ -158,48 +168,168 @@ class GameProvider with ChangeNotifier {
   }
 
   // Draw destinations for a specific player
-  List<Destination> getNewDestinations() {
-    print('=== GameProvider.getNewDestinations called ===');
-    print('Stack size before: ${_gameManager.destinationDeck.stackSize}');
+  // List<Destination> getNewDestinations() {
+  //   print('=== GameProvider.getNewDestinations called ===');
+  //   print('Stack size before: ${_gameManager.destinationDeck.stackSize}');
 
-    final destinations = _gameManager.getNewDestinations();
+  //   final destinations = _gameManager.getNewDestinations();
 
-    print('Drew ${destinations.length} destinations');
-    print('Destinations: ${destinations.map((d) => d.shortName).join(", ")}');
-    print('Stack size after: ${_gameManager.destinationDeck.stackSize}');
+  //   print('Drew ${destinations.length} destinations');
+  //   print('Destinations: ${destinations.map((d) => d.shortName).join(", ")}');
+  //   print('Stack size after: ${_gameManager.destinationDeck.stackSize}');
 
-    // Save immediately so other players can't get the same cards
-    // The destinations are marked as "pending" in the deck
-    print('Calling saveGame...');
-    saveGame();
-    print('saveGame completed');
+  //   // Save immediately so other players can't get the same cards
+  //   // The destinations are marked as "pending" in the deck
+  //   print('Calling saveGame...');
+  //   saveGame();
+  //   print('saveGame completed');
 
-    return destinations;
+  //   return destinations;
+  // }
+
+  // // Add selected destinations during setup (doesn't end turn)
+  // Future<void> addSelectedDestinationsSetup(
+  //   Player player,
+  //   List<Destination> selected,
+  //   List<Destination> unselected,
+  // ) async {
+  //   _gameManager.addSelectedDestinations(player, selected);
+  //   _gameManager.destinationDeck.completeSelection(unselected);
+  //   await saveGame();
+  //   notifyListeners();
+  // }
+
+  // // Add selected destinations during game (ends turn)
+  // Future<void> completeDestinationSelection(
+  //   Player player,
+  //   List<Destination> selected,
+  //   List<Destination> unselected,
+  // ) async {
+  //   _gameManager.addSelectedDestinations(player, selected);
+  //   _gameManager.destinationDeck.completeSelection(unselected);
+  //   _gameManager.nextTurn();
+  //   await saveGame();
+  //   notifyListeners();
+  // }
+
+  // game_provider.dart
+
+
+// **--- TRANSACTIONAL METHODS FOR DESTINATION CARDS ---**
+
+  /// Transactional method for initial draw (Player must keep 2 or 3)
+  Future<List<Destination>> getInitialDestinations() async {
+    return await _performDestinationDrawTransaction(_initialDrawCount,
+        isInitial: true);
   }
 
-  // Add selected destinations during setup (doesn't end turn)
-  Future<void> addSelectedDestinationsSetup(
-    Player player,
-    List<Destination> selected,
-    List<Destination> unselected,
-  ) async {
-    _gameManager.addSelectedDestinations(player, selected);
-    _gameManager.destinationDeck.completeSelection(unselected);
-    await saveGame();
-    notifyListeners();
+  /// Transactional method for mid-game draw (Player must keep 1 or more)
+  Future<List<Destination>> drawDestinations() async {
+    return await _performDestinationDrawTransaction(_midGameDrawCount,
+        isInitial: false);
   }
 
-  // Add selected destinations during game (ends turn)
-  Future<void> completeDestinationSelection(
-    Player player,
-    List<Destination> selected,
-    List<Destination> unselected,
-  ) async {
-    _gameManager.addSelectedDestinations(player, selected);
-    _gameManager.destinationDeck.completeSelection(unselected);
-    _gameManager.nextTurn();
-    await saveGame();
-    notifyListeners();
+  /// The core transactional logic to prevent destination card race conditions.
+  Future<List<Destination>> _performDestinationDrawTransaction(int drawCount,
+      {required bool isInitial}) async {
+    if (_gameRef == null || myPlayerIndex == null) {
+      throw Exception("Game not connected or player not found.");
+    }
+
+    List<Destination> dealtCards = [];
+
+    try {
+      await _gameRef!.firestore.runTransaction((transaction) async {
+        // 1. Read the current game state within the transaction
+        DocumentSnapshot snapshot = await transaction.get(_gameRef!);
+        if (!snapshot.exists) {
+          throw Exception("Game does not exist.");
+        }
+
+        final data = snapshot.data() as Map<String, dynamic>;
+        final currentManager = GameManager.fromFirebase(data);
+        final currentPlayer = currentManager.players[myPlayerIndex!];
+
+        // 2. Safety Check: If the player already has destinations pending, abort.
+        if (currentPlayer.hasPendingDestinations) {
+          throw Exception("Player already has pending destinations.");
+        }
+
+        // 3. (Mid-Game Check): Ensure it's the current player's turn if not initial setup
+        if (!isInitial && currentManager.currentPlayerIndex != myPlayerIndex) {
+          throw Exception("It is not your turn to draw destinations.");
+        }
+
+        // 4. Draw the cards atomically (modifies the deck on currentManager)
+        dealtCards = currentManager.destinationDeck.dealDestinations(drawCount);
+
+        if (dealtCards.isEmpty) {
+          throw Exception("Destination deck is empty.");
+        }
+
+        // 5. Assign the dealt cards to the current player's pending list
+        currentPlayer.pendingDestinations.addAll(dealtCards);
+
+        // 6. Write the updated game state back (includes the updated player and deck)
+        transaction.set(_gameRef!, currentManager.toFirebase());
+      });
+
+      // Update local state after successful transaction
+      _gameManager.players[myPlayerIndex!].pendingDestinations
+          .addAll(dealtCards);
+
+      notifyListeners();
+      return dealtCards;
+    } catch (e) {
+      print(
+          'Transaction failed for destination draw (Initial: $isInitial): $e');
+      rethrow;
+    }
+  }
+
+  // **--- NEW: Complete Selection Method ---**
+
+  /// Completes the destination selection and updates the game state.
+  /// This method also needs to be transactional, but for simplicity, we use the
+  /// existing saveGame if it doesn't overlap with a deck draw.
+  Future<void> completeDestinationSelection(Player player,
+      List<Destination> selected, List<Destination> unselected) async {
+    if (_gameRef == null || myPlayerIndex == null) return;
+
+    // This is also a CRITICAL WRITE, but since it doesn't depend on *reading*
+    // the deck before drawing, a simple saveGame might suffice IF your
+    // completeSelection logic is simple. For maximum safety, a transaction is best.
+
+    try {
+      await _gameRef!.firestore.runTransaction((transaction) async {
+        DocumentSnapshot snapshot = await transaction.get(_gameRef!);
+        if (!snapshot.exists) throw Exception("Game does not exist.");
+
+        final data = snapshot.data() as Map<String, dynamic>;
+        final currentManager = GameManager.fromFirebase(data);
+        final currentPlayer = currentManager.players[myPlayerIndex!];
+
+        // 1. Transfer cards from pending to hand
+        currentPlayer.handOfDestinationCards.addAll(selected);
+        currentPlayer.pendingDestinations.clear(); // Clear pending list
+
+        // 2. Return unselected cards to the deck's used pile
+        currentManager.destinationDeck.completeSelection(unselected);
+
+        // 3. Write the updated game state back
+        transaction.set(_gameRef!, currentManager.toFirebase());
+      });
+
+      // Update local state
+      player.handOfDestinationCards.addAll(selected);
+      player.pendingDestinations.clear();
+      notifyListeners();
+
+      // The game loop logic (e.g., nextTurn) should be handled by the UI after this resolves.
+    } catch (e) {
+      print('Transaction failed for completeDestinationSelection: $e');
+      rethrow;
+    }
   }
 
   // Draw ONE card from deck

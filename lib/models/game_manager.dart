@@ -149,9 +149,9 @@ class GameManager {
     }
   }
 
-  List<Destination> getNewDestinations() {
-    return destinationDeck.dealInitialDestinations(3);
-  }
+  // List<Destination> getNewDestinations() {
+  //   return destinationDeck.dealInitialDestinations(3);
+  // }
 
   void addSelectedDestinations(Player player, List<Destination> destinations) {
     player.handOfDestinationCards.addAll(destinations);

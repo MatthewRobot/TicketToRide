@@ -10,6 +10,7 @@ class Player {
   int numberOfTrains;
   List<game_card.Card> handOfCards;
   List<Destination> handOfDestinationCards;
+  List<Destination> pendingDestinations;
   int score;
 
   Player({
@@ -19,9 +20,13 @@ class Player {
     this.numberOfTrains = 45,
     List<game_card.Card>? handOfCards,
     List<Destination>? handOfDestinationCards,
+    List<Destination>? pendingDestinations, // 2. Add as a named parameter
     this.score = 0,
   })  : handOfCards = handOfCards ?? [],
-        handOfDestinationCards = handOfDestinationCards ?? [];
+        handOfDestinationCards = handOfDestinationCards ?? [],
+        pendingDestinations = pendingDestinations ?? [];
+
+  bool get hasPendingDestinations => pendingDestinations.isNotEmpty; 
 
   // Method to draw 2 cards (or 1 if rainbow card taken from table)
   void drawCards(Deck deck, {bool rainbowFromTable = false}) {
@@ -52,12 +57,14 @@ class Player {
   Map<String, dynamic> toFirebase() {
     return {
       'name': name,
-      'userId': userId, // NEW: Include userId
+      'userId': userId,
       'color': color.value,
       'numberOfTrains': numberOfTrains,
       'handOfCards': handOfCards.map((c) => c.toFirebase()).toList(),
       'handOfDestinationCards':
           handOfDestinationCards.map((c) => c.toFirebase()).toList(),
+      'pendingDestinations': // NEW: Include in Firebase serialization
+          pendingDestinations.map((c) => c.toFirebase()).toList(), 
       'score': score,
     };
   }
@@ -65,7 +72,7 @@ class Player {
   factory Player.fromFirebase(Map<String, dynamic> data) {
     return Player(
       name: data['name'] as String,
-      userId: data['userId'] as String, // NEW: Read userId
+      userId: data['userId'] as String,
       color: Color(data['color'] as int),
       numberOfTrains: data['numberOfTrains'] as int,
       handOfCards: (data['handOfCards'] as List)
@@ -74,7 +81,10 @@ class Player {
       handOfDestinationCards: (data['handOfDestinationCards'] as List)
           .map((d) => Destination.fromFirebase(d))
           .toList(),
-      score: data['score'] ?? 0,
+      pendingDestinations: (data['pendingDestinations'] as List?) // NEW: Read from Firebase
+          ?.map((d) => Destination.fromFirebase(d))
+          .toList(),
+      score: data['score'] as int,
     );
   }
 }

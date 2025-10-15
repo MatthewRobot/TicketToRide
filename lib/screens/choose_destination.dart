@@ -51,32 +51,52 @@ class _ChooseDestinationState extends State<ChooseDestination> {
     super.dispose();
   }
 
-  void _loadDestinations() {
-    print('=== _loadDestinations called ===');
-    print('_destinationsLoaded: $_destinationsLoaded');
-    print('_availableDestinations.length: ${_availableDestinations.length}');
-    
-    // Only load once
-    if (_destinationsLoaded) {
-      print('Skipping load - already loaded');
-      return;
-    }
-    
+  Future<void> _loadDestinations() async {
+    if (_destinationsLoaded) return;
+
     final gameProvider = Provider.of<GameProvider>(context, listen: false);
 
-    print('Actually loading destinations...');
-    // Get 3 new destinations for selection
-    _availableDestinations = gameProvider.getNewDestinations();
-    _destinationsLoaded = true;
+    // 1. Get current player's pending destinations if they exist (re-opening the screen)
+    // We assume you have a way to get the current player via gameProvider.
+    final currentPlayer = gameProvider.players.firstWhere((p) =>
+        p.userId ==
+        gameProvider.userId); // Assuming currentUserId getter exists
 
-    print('Loaded ${_availableDestinations.length} destinations for selection');
-    print('Player index: ${widget.playerIndex}');
-    print('Is initial selection: ${widget.isInitialSelection}');
-    print('Destinations: ${_availableDestinations.map((d) => d.shortName).join(", ")}');
+    if (currentPlayer.hasPendingDestinations) {
+      // Player already drew, just use the pending cards
+      setState(() {
+        _availableDestinations = currentPlayer.pendingDestinations;
+        _isLoading = false;
+        _destinationsLoaded = true;
+      });
+      return;
+    }
 
-    setState(() {
-      _isLoading = false;
-    });
+    // 2. Otherwise, perform a new transactional draw
+    try {
+      final List<Destination> dealtCards = widget.isInitialSelection
+          ? await gameProvider
+              .getInitialDestinations() // Use transactional initial draw
+          : await gameProvider
+              .drawDestinations(); // Use transactional mid-game draw
+
+      if (mounted) {
+        setState(() {
+          _availableDestinations = dealtCards;
+          _isLoading = false;
+          _destinationsLoaded = true;
+        });
+      }
+    } catch (e) {
+      print('Error loading destinations: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error drawing destinations: $e')),
+        );
+        Navigator.of(context)
+            .pop(); // Go back if the draw fails (e.g., race condition lost)
+      }
+    }
   }
 
   @override
@@ -85,15 +105,17 @@ class _ChooseDestinationState extends State<ChooseDestination> {
     print('State hash: ${hashCode}');
     print('_destinationsLoaded: $_destinationsLoaded');
     print('_availableDestinations.length: ${_availableDestinations.length}');
-    
+
     final screenSize = MediaQuery.of(context).size;
     // Use listen: false to prevent rebuilds from Firebase
     final gameProvider = Provider.of<GameProvider>(context, listen: false);
-    
+
     // Determine which player is selecting
-    final effectivePlayerIndex = widget.playerIndex ?? gameProvider.myPlayerIndex;
-    
-    if (effectivePlayerIndex == null || effectivePlayerIndex >= gameProvider.players.length) {
+    final effectivePlayerIndex =
+        widget.playerIndex ?? gameProvider.myPlayerIndex;
+
+    if (effectivePlayerIndex == null ||
+        effectivePlayerIndex >= gameProvider.players.length) {
       return Scaffold(
         appBar: AppBar(title: const Text('Error')),
         body: const Center(child: Text('Player not found')),
@@ -117,7 +139,6 @@ class _ChooseDestinationState extends State<ChooseDestination> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   SizedBox(height: screenSize.height * 0.02),
-
                   Text(
                     widget.isInitialSelection
                         ? 'Choose destinations to keep (2-3 cards):'
@@ -128,9 +149,7 @@ class _ChooseDestinationState extends State<ChooseDestination> {
                     ),
                     textAlign: TextAlign.center,
                   ),
-
                   SizedBox(height: screenSize.height * 0.03),
-
                   Expanded(
                     child: ListView.builder(
                       itemCount: _availableDestinations.length,
@@ -187,9 +206,7 @@ class _ChooseDestinationState extends State<ChooseDestination> {
                       },
                     ),
                   ),
-
                   SizedBox(height: screenSize.height * 0.02),
-
                   Container(
                     padding: EdgeInsets.all(screenSize.width * 0.03),
                     decoration: BoxDecoration(
@@ -221,9 +238,7 @@ class _ChooseDestinationState extends State<ChooseDestination> {
                       ],
                     ),
                   ),
-
                   SizedBox(height: screenSize.height * 0.02),
-
                   ElevatedButton(
                     onPressed: _canSubmit() && !_hasSubmitted ? _submit : null,
                     style: ElevatedButton.styleFrom(
@@ -244,7 +259,6 @@ class _ChooseDestinationState extends State<ChooseDestination> {
                       ),
                     ),
                   ),
-
                   SizedBox(height: screenSize.height * 0.02),
                 ],
               ),
@@ -282,9 +296,11 @@ class _ChooseDestinationState extends State<ChooseDestination> {
     });
 
     final gameProvider = Provider.of<GameProvider>(context, listen: false);
-    final effectivePlayerIndex = widget.playerIndex ?? gameProvider.myPlayerIndex;
+    final effectivePlayerIndex =
+        widget.playerIndex ?? gameProvider.myPlayerIndex;
 
-    if (effectivePlayerIndex == null || effectivePlayerIndex >= gameProvider.players.length) {
+    if (effectivePlayerIndex == null ||
+        effectivePlayerIndex >= gameProvider.players.length) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -297,18 +313,17 @@ class _ChooseDestinationState extends State<ChooseDestination> {
     }
 
     final player = gameProvider.players[effectivePlayerIndex];
-    
+
     // Cards that were not selected go back to used pile
-    final unselectedDestinations = _availableDestinations.where(
-      (d) => !_selectedDestinations.contains(d)
-    ).toList();
+    final unselectedDestinations = _availableDestinations
+        .where((d) => !_selectedDestinations.contains(d))
+        .toList();
 
     try {
+      // Initial setup: no turn ends
+      await gameProvider.completeDestinationSelection(
+          player, _selectedDestinations, unselectedDestinations);
       if (widget.isInitialSelection) {
-        // Initial setup: no turn ends
-        await gameProvider.addSelectedDestinationsSetup(
-            player, _selectedDestinations, unselectedDestinations);
-
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

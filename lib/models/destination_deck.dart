@@ -61,13 +61,19 @@ class DestinationDeck {
     }
   }
 
-  Destination? drawDestination() {
-    if (_stack.isEmpty) {
-      _reshuffleUsedPile();
+  void _checkAndReshuffle() {
+    if (_stack.isEmpty && _usedPile.isNotEmpty) {
+      _stack.addAll(_usedPile);
+      _usedPile.clear();
+      _shuffleDeck();
+      print('Destination deck reshuffled.');
     }
-    
+  }
+  
+   Destination? drawDestination() {
+    _checkAndReshuffle();
     if (_stack.isNotEmpty) {
-      return _stack.removeAt(0);
+      return _stack.removeLast();
     }
     return null;
   }
@@ -89,23 +95,28 @@ class DestinationDeck {
   }
 
   // Deal initial destination cards and mark them as pending
-  List<Destination> dealInitialDestinations(int count) {
+  List<Destination> dealDestinations(int count) { 
     List<Destination> dealtCards = [];
-    for (int i = 0; i < count && _stack.isNotEmpty; i++) {
-      final destination = drawDestination();
+
+    for (int i = 0; i < count; i++) {
+      Destination? destination = drawDestination();
       if (destination != null) {
         dealtCards.add(destination);
       }
     }
     
-    // Mark these as pending selection
-    _pendingSelection.addAll(dealtCards);
+    // Mark these as pending selection on the DECK level
+    _pendingSelection.addAll(dealtCards); 
     
     return dealtCards;
   }
 
   // Complete destination selection - move unselected to used pile
   void completeSelection(List<Destination> unselected) {
+    // Also remove the unselected cards from the deck's pending selection
+    for (var card in unselected) {
+        _pendingSelection.remove(card);
+    }
     addToUsedPile(unselected);
   }
 
