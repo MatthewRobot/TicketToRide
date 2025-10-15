@@ -34,51 +34,51 @@ class _HostScreenState extends State<HostScreen> {
     super.dispose();
   }
 
- void _createGameIfNeeded() async {
-  final gameProvider = Provider.of<GameProvider>(context, listen: false);
-  
-  if (_displayedGameId == null && !_isInitializing) {
-    setState(() {
-      _isInitializing = true;
-    });
-    
-    final newGameRef = FirebaseFirestore.instance.collection('games').doc();
-    final gameId = newGameRef.id;
+  void _createGameIfNeeded() async {
+    final gameProvider = Provider.of<GameProvider>(context, listen: false);
 
-    try {
-      // 1. Connection (Log is expected)
-      await gameProvider.connectToGame(gameId);
-      
-      // 2. CRITICAL STEP: Save/Create Document
-      await gameProvider.saveGame(); // ⬅️ Suspect for unhandled exception
-      
-      // 3. Update UI state only after successful save
-      if (mounted) {
-        setState(() {
-          _displayedGameId = gameId;
-          _isInitializing = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Game ID: $gameId. Share this with players!'),
-            duration: const Duration(seconds: 5),
-          ),
-        );
-      }
-    } catch (e) {
-      // 4. Catch and log any exceptions from connectToGame or saveGame
-      print('FATAL ERROR during Game Initialization: $e');
-      if (mounted) {
-        setState(() {
-          _isInitializing = false; // MUST set to false to un-stick the UI
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to create game: Check Console.')),
-        );
+    if (_displayedGameId == null && !_isInitializing) {
+      setState(() {
+        _isInitializing = true;
+      });
+
+      final newGameRef = FirebaseFirestore.instance.collection('games').doc();
+      final gameId = newGameRef.id;
+
+      try {
+        // 1. Connection (Log is expected)
+        await gameProvider.connectToGame(gameId);
+
+        // 2. CRITICAL STEP: Save/Create Document
+        await gameProvider.saveGame(); // ⬅️ Suspect for unhandled exception
+
+        // 3. Update UI state only after successful save
+        if (mounted) {
+          setState(() {
+            _displayedGameId = gameId;
+            _isInitializing = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Game ID: $gameId. Share this with players!'),
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+      } catch (e) {
+        // 4. Catch and log any exceptions from connectToGame or saveGame
+        print('FATAL ERROR during Game Initialization: $e');
+        if (mounted) {
+          setState(() {
+            _isInitializing = false; // MUST set to false to un-stick the UI
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to create game: Check Console.')),
+          );
+        }
       }
     }
   }
-}
 
   void _startNewGame(BuildContext context, GameProvider gameProvider) async {
     // 1. Get a unique ID from Firestore without creating the document yet
@@ -446,8 +446,8 @@ class _HostScreenState extends State<HostScreen> {
                                     )
                                   else
                                     Expanded(
-                                      child: _buildLeaderboardTable(
-                                          screenSize, isGameEnded, gameProvider),
+                                      child: _buildLeaderboardTable(screenSize,
+                                          isGameEnded, gameProvider),
                                     ),
                                 ],
                               ),
@@ -685,6 +685,19 @@ class _HostScreenState extends State<HostScreen> {
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: screenSize.width * 0.01,
+                    color: Colors.white,
+                    shadows: [
+                      Shadow(
+                        blurRadius: 2.0, // Controls the fuzziness of the shadow
+                        color: Colors.black, // Shadow color
+                        offset: Offset(1.0, 1.0), // Shadow offset (x, y)
+                      ),
+                      Shadow(
+                        blurRadius: 2.0,
+                        color: Colors.black,
+                        offset: Offset(-1.0, -1.0), // For a bolder outline
+                      ),
+                    ],
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -700,8 +713,8 @@ class _HostScreenState extends State<HostScreen> {
               child: ElevatedButton(
                 onPressed: () {
                   if (gameProvider.players.isNotEmpty) {
-                    gameProvider.drawCardFromDeck(
-                        gameProvider.currentPlayerIndex);
+                    gameProvider
+                        .drawCardFromDeck(gameProvider.currentPlayerIndex);
                   }
                 },
                 style: ElevatedButton.styleFrom(
@@ -765,5 +778,4 @@ class _HostScreenState extends State<HostScreen> {
       }),
     );
   }
-
 }

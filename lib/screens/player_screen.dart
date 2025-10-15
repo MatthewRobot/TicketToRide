@@ -220,7 +220,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
             (screenSize.width * 0.06) -
             (4 * screenSize.width * 0.02)) /
         3;
-    final cardHeight = screenSize.height/12;
+    final cardHeight = screenSize.height / 10;
 
     return SizedBox(
       height:
@@ -306,6 +306,53 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 
+  // Widget _buildTrainCard(Size screenSize, game_card.CardType cardType,
+  //     int count, double cardWidth, double cardHeight) {
+  //   final card = game_card.Card(type: cardType);
+
+  //   return Container(
+  //     width: cardWidth,
+  //     height: cardHeight,
+  //     decoration: BoxDecoration(
+  //       color: card.color,
+  //       borderRadius: BorderRadius.circular(8),
+  //       border: Border.all(color: Colors.black, width: 2),
+  //     ),
+  //     child: Column(
+  //       mainAxisAlignment: MainAxisAlignment.center,
+  //       children: [
+  //         Text(
+  //           card.name,
+  //           style: TextStyle(
+  //             color: Colors.white,
+  //             fontSize: screenSize.width * 0.03,
+  //             fontWeight: FontWeight.bold,
+  //           ),
+  //           textAlign: TextAlign.center,
+  //         ),
+  //         SizedBox(height: screenSize.height * 0.005),
+  //         Container(
+  //           padding: EdgeInsets.symmetric(
+  //             horizontal: screenSize.width * 0.02,
+  //             vertical: screenSize.height * 0.005,
+  //           ),
+  //           decoration: BoxDecoration(
+  //             color: Colors.white,
+  //             borderRadius: BorderRadius.circular(12),
+  //           ),
+  //           child: Text(
+  //             '$count',
+  //             style: TextStyle(
+  //               color: Colors.black,
+  //               fontSize: screenSize.width * 0.04,
+  //               fontWeight: FontWeight.bold,
+  //             ),
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
   Widget _buildTrainCard(Size screenSize, game_card.CardType cardType,
       int count, double cardWidth, double cardHeight) {
     final card = game_card.Card(type: cardType);
@@ -318,38 +365,57 @@ class _PlayerScreenState extends State<PlayerScreen> {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.black, width: 2),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            card.name,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: screenSize.width * 0.03,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: screenSize.height * 0.005),
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: screenSize.width * 0.02,
-              vertical: screenSize.height * 0.005,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              '$count',
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: screenSize.width * 0.04,
-                fontWeight: FontWeight.bold,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Padding(
+              padding:
+                  EdgeInsets.symmetric(horizontal: screenSize.width * 0.01),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  card.name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 30,
+                    fontWeight: FontWeight.bold,
+                    shadows: [
+                      Shadow(offset: Offset(-1.5, -1.5), color: Colors.black),
+                      Shadow(offset: Offset(1.5, -1.5), color: Colors.black),
+                      Shadow(offset: Offset(1.5, 1.5), color: Colors.black),
+                      Shadow(offset: Offset(-1.5, 1.5), color: Colors.black),
+                    ],
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ),
-          ),
-        ],
+            SizedBox(height: screenSize.height * 0.005),
+            // Removed the outer Container that had the white background
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                '$count',
+                style: const TextStyle(
+                  color: Colors.black, // The main text color for the number
+                  fontSize: 40,
+                  fontWeight: FontWeight.bold,
+                  shadows: [
+                    // White stroke for the number
+                    Shadow(offset: Offset(-1.5, -1.5), color: Colors.white),
+                    Shadow(offset: Offset(1.5, -1.5), color: Colors.white),
+                    Shadow(offset: Offset(1.5, 1.5), color: Colors.white),
+                    Shadow(offset: Offset(-1.5, 1.5), color: Colors.white),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
