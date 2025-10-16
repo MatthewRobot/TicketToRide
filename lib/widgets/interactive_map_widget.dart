@@ -6,10 +6,17 @@ import 'package:path_drawing/path_drawing.dart';
 import '../services/map_geometry_service.dart';
 import '../models/city_geometry.dart';
 import '../models/route_geometry.dart';
+import 'package:provider/provider.dart'; // ADD Provider for game data lookup
+import '../providers/game_provider.dart';
 import '../models/train_route.dart' as game_route;
 
 class InteractiveMapWidget extends StatefulWidget {
-  const InteractiveMapWidget({super.key});
+  final void Function(game_route.TrainRoute route)? onRouteTap;
+
+  const InteractiveMapWidget({
+    super.key,
+    this.onRouteTap, // Add to constructor
+  });
 
   @override
   State<InteractiveMapWidget> createState() => _InteractiveMapWidgetState();
@@ -22,6 +29,14 @@ class _InteractiveMapWidgetState extends State<InteractiveMapWidget> {
   Matrix4? _transformationMatrix;
   bool _showDebugOverlay = false; // Toggle for debug visualization
   Size? _lastWidgetSize;
+
+  bool _isTapNearRoutePath(Offset tapPoint, Path routePath) {
+    const double hitTolerance = 25.0; // Increase this for easier tapping
+
+    // Check if the tap point is within the bounding box of the route path,
+    // inflated by the hit tolerance. This is a simple, non-geometric check.
+    return routePath.getBounds().inflate(hitTolerance).contains(tapPoint);
+  }
 
   @override
   void initState() {
@@ -53,9 +68,11 @@ class _InteractiveMapWidgetState extends State<InteractiveMapWidget> {
         math.min(scaleX, scaleY); // Use smaller scale to maintain aspect ratio
 
     // 1. Calculate centering translation (Tx, Ty)
-    final centeredTranslateX = (widgetSize.width - mapData.svgWidth * scale) / 2;
-    final centeredTranslateY = (widgetSize.height - mapData.svgHeight * scale) / 2;
-    
+    final centeredTranslateX =
+        (widgetSize.width - mapData.svgWidth * scale) / 2;
+    final centeredTranslateY =
+        (widgetSize.height - mapData.svgHeight * scale) / 2;
+
     // 2. Adjust translation by the scaled ViewBox minimums (+- makes no difference becuase view box is 0 0 x y)
     final translateX = centeredTranslateX - mapData.svgMinX * scale;
     final translateY = centeredTranslateY - mapData.svgMinY * scale;
@@ -223,11 +240,11 @@ class _InteractiveMapWidgetState extends State<InteractiveMapWidget> {
         final maxHeight = constraints.maxHeight;
         final widgetSize = Size(maxWidth, maxHeight);
 
-        print(
-            'InteractiveMapWidget: LayoutBuilder - maxWidth: $maxWidth, maxHeight: $maxHeight');
-        print('InteractiveMapWidget: Constraints - ${constraints.toString()}');
-        print(
-            'InteractiveMapWidget: Is height infinite? ${constraints.maxHeight == double.infinity}');
+        // print(
+        //     'InteractiveMapWidget: LayoutBuilder - maxWidth: $maxWidth, maxHeight: $maxHeight');
+        // print('InteractiveMapWidget: Constraints - ${constraints.toString()}');
+        // print(
+        //     'InteractiveMapWidget: Is height infinite? ${constraints.maxHeight == double.infinity}');
 
         // Calculate transformation matrix if we have map data and widget size changed
         if (_mapData != null &&
@@ -241,8 +258,25 @@ class _InteractiveMapWidgetState extends State<InteractiveMapWidget> {
 
         return GestureDetector(
           onTapUp: (details) {
+            if (_mapData == null || widget.onRouteTap == null) {
+              return;
+            }
+            
             if (_mapData != null) {
-              _handleTap(details.localPosition);
+              _handleTap(details.localPosition);}
+            final Offset tapPoint = details.localPosition;
+
+            // Loop through all transformed route geometries
+            for (final routeGeometry in _mapData!.routeGeometries) {
+              if (routeGeometry.transformedPath != null) {
+                if (_isTapNearRoutePath(
+                    tapPoint, routeGeometry.transformedPath!)) {
+                  // Call the callback with the linked TrainRoute object
+                  print('it gets to onRouteTap!!!!!');
+                  widget.onRouteTap!(routeGeometry.route);
+                  return; // Stop checking after the first hit
+                }
+              }
             }
           },
           onDoubleTap: () {

@@ -22,9 +22,12 @@ class MapGeometryService {
 
       // Parse routes from JSON
       final routes = <TrainRoute>[];
+      final routesMap = <String, TrainRoute>{}; // NEW: Map for fast lookup
       final routesJson = jsonData['routes'] as List<dynamic>;
       for (final routeJson in routesJson) {
+        final route = TrainRoute.fromJson(routeJson);
         routes.add(TrainRoute.fromJson(routeJson));
+        routesMap[route.id] = route; // Store for quick lookup
       }
 
       // Load SVG data
@@ -58,13 +61,21 @@ class MapGeometryService {
       final pathElements = document.findAllElements('path');
       for (final element in pathElements) {
         final id = element.getAttribute('id');
-        if (id != null && id.startsWith('R')) {
-          final rawPath = element.getAttribute('d') ?? '';
-          if (rawPath.isNotEmpty) {
+        final rawPath = element.getAttribute('d');
+        if (id != null && id.startsWith('R') && rawPath != null) {
+          
+          // CRITICAL FIX: Look up the corresponding TrainRoute object
+          final route = routesMap[id]; 
+
+          if (route != null) {
+            // FIX: Pass the required 'route' argument when creating RouteGeometry
             routeGeometries.add(RouteGeometry(
               id: id,
               rawPath: rawPath,
+              route: route, // Pass the TrainRoute object
             ));
+          } else {
+            print('Warning: SVG path $id found, but no matching TrainRoute object in JSON.');
           }
         }
       }

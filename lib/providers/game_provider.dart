@@ -13,6 +13,7 @@ class GameProvider with ChangeNotifier {
   String _userId = '';
   String? _gameId;
   String? _myPlayerId;
+  List<TrainRoute> _staticAllRoutes = [];
 
   // Firebase references
   DocumentReference? _gameRef;
@@ -26,6 +27,7 @@ class GameProvider with ChangeNotifier {
 
   // NEW: Get my player index
   int? get myPlayerIndex {
+    // print('this is _myplayerID $_myPlayerId');
     if (_myPlayerId == null) return null;
     return _gameManager.players.indexWhere((p) => p.userId == _myPlayerId);
   }
@@ -43,6 +45,8 @@ class GameProvider with ChangeNotifier {
   bool get drewRainbowFromTable => _gameManager.drewRainbowFromTable;
   int? get pendingDestinationDrawPlayerIndex =>
       _gameManager.pendingDestinationDrawPlayerIndex;
+  int? get routePlacePlayerIndex => _gameManager.routePlacePlayerIndex;
+  Map<String, int?> get routeOwners => _gameManager.routeOwners;
 
   // NEW: Getters for draw rules
   static const int _initialDrawCount = 3;
@@ -58,42 +62,43 @@ class GameProvider with ChangeNotifier {
     _gameId = gameId;
     _gameRef = FirebaseFirestore.instance.collection('games').doc(gameId);
 
+    if (_gameManager.allRoutes.isEmpty) {
+      await _loadRoutes();
+    }
+
     // Listen to game state changes
     _gameRef!.snapshots().listen((snapshot) {
       if (snapshot.exists) {
         final data = snapshot.data() as Map<String, dynamic>;
-        _gameManager = GameManager.fromFirebase(data);
-        // try {
-        //   final myPlayer = _gameManager.players.firstWhere(
-        //     (p) => p.userId == _userId,
-        //   );
-        //   _myPlayerId = myPlayer.userId;
-        // } catch (e) {
-        //   // Player not found in this game yet, keep _myPlayerId as null
-        //   _myPlayerId = null;
-        //   print('User ID $_userId not found in game players list.');
-        // }
+        // 1. Create the new dynamic state object
+        final newGameManager = GameManager.fromFirebase(data);
+
+        // 2. 🔑 INJECT the static routes into the new instance
+        newGameManager.setAllRoutes(_staticAllRoutes);
+
+        // 3. Replace the old instance with the new, COMPLETE instance
+        _gameManager = newGameManager;
         notifyListeners();
       }
     });
   }
 
-  // Create a new game
-  Future<String> createGame() async {
-    final newGameRef = FirebaseFirestore.instance.collection('games').doc();
-    _gameId = newGameRef.id;
-    _gameRef = newGameRef;
+  // // Create a new game
+  // Future<String> createGame() async {
+  //   final newGameRef = FirebaseFirestore.instance.collection('games').doc();
+  //   _gameId = newGameRef.id;
+  //   _gameRef = newGameRef;
 
-    // Initialize empty game
-    _gameManager = GameManager();
-    await _loadRoutes();
-    await saveGame();
+  //   // Initialize empty game
+  //   _gameManager = GameManager();
+  //   await _loadRoutes();
+  //   await saveGame();
 
-    // Start listening
-    await connectToGame(_gameId!);
+  //   // Start listening
+  //   await connectToGame(_gameId!);
 
-    return _gameId!;
-  }
+  //   return _gameId!;
+  // }
 
   // Add player with unique ID
   // Future<bool> addPlayer(String name, Color color) async {
@@ -175,12 +180,47 @@ class GameProvider with ChangeNotifier {
     if (_gameManager.players.length < 2) {
       throw Exception('Need at least 2 players to start');
     }
-
+    await _loadRoutes();
     _gameManager.startGame();
     await saveGame();
     notifyListeners();
   }
 
+  TrainRoute? get routeToPlace {
+    print('arrived at route to place');
+    if (_gameManager.routeToPlaceId == null) return null;
+    print('got into route to place if');
+    try {
+      return _gameManager.allRoutes.firstWhere(
+        (r) => r.id == _gameManager.routeToPlaceId,
+      );
+    } catch (e) {
+      print('exception caught');
+      return null; // Route not found
+    }
+  }
+
+  Future<bool> setRouteForPlacing(TrainRoute route) async {
+    // Only allow the current player to initiate the claim
+
+    // Check if route is already owned
+    if (_gameManager.routeOwners[route.id] != null) {
+      print('route is owned, saus gaem provider');
+      return false;
+    }
+
+    // Set the state
+    print(
+        'made it to setting routePlacePlayer index to $currentPlayerIndex current & routeplace id');
+    print('in setRoutForPlacing route.id is in $route');
+    _gameManager.routePlacePlayerIndex = _gameManager.currentPlayerIndex;
+    _gameManager.routeToPlaceId = route.id;
+
+    // Save state to Firebase to trigger PlayerScreen navigation
+    await saveGame();
+    notifyListeners();
+    return true;
+  }
   // Draw destinations for a specific player
   // List<Destination> getNewDestinations() {
   //   print('=== GameProvider.getNewDestinations called ===');
@@ -248,7 +288,8 @@ class GameProvider with ChangeNotifier {
       throw Exception('Game has not started yet.');
     }
     // 1. Set the current player as the one expected to draw destinations
-    _gameManager.pendingDestinationDrawPlayerIndex =_gameManager.currentPlayerIndex;
+    _gameManager.pendingDestinationDrawPlayerIndex =
+        _gameManager.currentPlayerIndex;
 
     // 2. The player will call drawDestinations() on their screen
 
@@ -346,7 +387,7 @@ class GameProvider with ChangeNotifier {
         currentPlayer.pendingDestinations.clear(); // Clear pending list
 
         // 2. Return unselected cards to the deck's used pile
-        currentManager.destinationDeck.completeSelection(selected,unselected);
+        currentManager.destinationDeck.completeSelection(selected, unselected);
 
         // 3. NEW: Clear pending draw state (Crucial for mid-game flow control)
         if (currentManager.pendingDestinationDrawPlayerIndex == playerIndex) {
@@ -432,11 +473,12 @@ class GameProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  bool placeRoute({
+  Future<bool> placeRoute({
     required int playerIndex,
     required TrainRoute route,
     required List<game_card.Card> cards,
-  }) {
+  }) async {
+    // 1. Perform the claim logic in GameManager (updates player trains/score, sets owner)
     final success = _gameManager.placeRoute(
       playerIndex: playerIndex,
       route: route,
@@ -444,9 +486,15 @@ class GameProvider with ChangeNotifier {
     );
 
     if (success) {
-      nextTurn();
-    }
+      // 2. Reset the temporary state and advance turn
+      _gameManager
+          .resetPlaceRouteState(); // Resets routePlacePlayerIndex and routeToPlaceId
+      _gameManager.nextTurn(); // Advances currentPlayerIndex
 
+      // 3. Save to Firebase
+      await saveGame();
+      notifyListeners();
+    }
     return success;
   }
 
@@ -517,12 +565,16 @@ class GameProvider with ChangeNotifier {
       final Map<String, dynamic> jsonData = json.decode(jsonString);
       final List<dynamic> routesJson = jsonData['routes'] ?? [];
 
-      final routes =
-          routesJson.map((json) => TrainRoute.fromJson(json)).toList();
+      final routes = routesJson.map((json) => TrainRoute.fromJson(json)).toList();
+
+      _staticAllRoutes = routes;
+
       _gameManager.setAllRoutes(routes);
 
       for (var route in routes) {
-        _gameManager.routeOwners[route.id] = null;
+        if (!routeOwners.containsKey(route.id)) {
+        routeOwners[route.id] = null;
+      }
       }
     } catch (e) {
       print('Error loading routes: $e');

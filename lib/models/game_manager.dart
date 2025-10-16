@@ -30,6 +30,8 @@ class GameManager {
   int? pendingDestinationDrawPlayerIndex = null;
   int cardsDrawnThisTurn = 0; // Tracks train card draws
   bool drewRainbowFromTable = false; // Tracks rainbow draw limit
+  int? routePlacePlayerIndex = null;
+  String? routeToPlaceId = null;
 
   // Train Route Points Map (length: points)
   static const Map<int, int> _trainRoutePoints = {
@@ -51,7 +53,7 @@ class GameManager {
     allRoutes = routes;
     _routeMap = {for (var route in routes) route.id: route};
   }
-  
+
   // Add a player to the game - UPDATED to include userId
   void addPlayer(String name, Color color, String userId) {
     if (players.any((p) => p.userId == userId)) {
@@ -74,6 +76,11 @@ class GameManager {
     }
   }
 
+  void resetPlaceRouteState() {
+    routePlacePlayerIndex = null;
+    routeToPlaceId = null;
+  }
+
   void nextTurn() {
     // 1. Check for end-game trigger on the *current* player
     if (players[currentPlayerIndex].numberOfTrains <= 2 &&
@@ -84,10 +91,10 @@ class GameManager {
 
     // 2. Advance player index
     currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
-    
-    cardsDrawnThisTurn = 0; 
+
+    cardsDrawnThisTurn = 0;
     drewRainbowFromTable = false;
-    
+
     // 3. Increment final turn counter if in final round
     if (finalTurnCounter != -1) {
       finalTurnCounter++;
@@ -371,8 +378,10 @@ class GameManager {
       'isGameOver': isGameOver,
       'finalTurnCounter': finalTurnCounter,
       'pendingDestinationDrawPlayerIndex': pendingDestinationDrawPlayerIndex,
-      'cardsDrawnThisTurn': cardsDrawnThisTurn, 
+      'cardsDrawnThisTurn': cardsDrawnThisTurn,
       'drewRainbowFromTable': drewRainbowFromTable,
+      'routePlacePlayerIndex': routePlacePlayerIndex, // ADD THIS
+      'routeToPlaceId': routeToPlaceId, // ADD THIS
     };
   }
 
@@ -397,6 +406,8 @@ class GameManager {
         data['pendingDestinationDrawPlayerIndex'] as int?;
     gameManager.cardsDrawnThisTurn = data['cardsDrawnThisTurn'] ?? 0;
     gameManager.drewRainbowFromTable = data['drewRainbowFromTable'] ?? false;
+    gameManager.routePlacePlayerIndex = data['routePlacePlayerIndex'] as int?;
+    gameManager.routeToPlaceId = data['routeToPlaceId'] as String?;
     return gameManager;
   }
 }

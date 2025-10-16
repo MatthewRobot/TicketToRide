@@ -124,7 +124,7 @@ class _HostScreenState extends State<HostScreen> {
     final isGameEnded = false; // This would be controlled by game state
     // Guard against an invalid index just in case the data is partially corrupted
     final currentPlayerIndex = gameProvider.currentPlayerIndex;
-    
+
     final bool isValidCurrentPlayer = currentPlayerIndex >= 0 &&
         currentPlayerIndex < gameProvider.players.length;
 
@@ -410,7 +410,45 @@ class _HostScreenState extends State<HostScreen> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(8.0),
-                          child: const InteractiveMapWidget(),
+                          child: InteractiveMapWidget(
+                            onRouteTap: (route) async {
+                              final gameProvider = Provider.of<GameProvider>(
+                                  context,
+                                  listen: false);
+                              final routeOwner =
+                                  gameProvider.routeOwners[route.id];
+                              print('made it to gameProvider.setRouteForPlacing(route);');
+                              final success =
+                                  await gameProvider.setRouteForPlacing(route);
+                              
+                              // 3. Now, check if the widget is still in the tree.
+                              if (!mounted) return;
+
+                              // If the function has not returned by now, 'mounted' is true.
+                              if (!success) {
+                                // If setRouteForPlacing failed, it's either because:
+                                // a) The route is already owned (the provider checked this)
+                                // b) An internal Firebase/state error occurred.
+
+                                if (routeOwner != null) {
+                                  // Case a: Route is owned (use the variable we read before the async call)
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                          'Route is already claimed by Player ${routeOwner + 1}.'),
+                                    ),
+                                  );
+                                } else {
+                                  // Case b: Generic failure (shouldn't happen often)
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text(
+                                            'Failed to initiate route claim. Try again.')),
+                                  );
+                                }
+                              }
+                            },
+                          ),
                         ),
                       ),
                     ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ticket_to_ride/screens/choose_destination.dart';
+import 'package:ticket_to_ride/screens/place_Route.dart';
 import '../providers/game_provider.dart';
 import '../models/card.dart' as game_card;
 
@@ -49,6 +50,28 @@ class _PlayerScreenState extends State<PlayerScreen> {
             builder: (context) => ChooseDestination(
               isInitialSelection: false, // Mid-game flag
               playerIndex: effectivePlayerIndex,
+            ),
+          ),
+        );
+      }
+      final routeToPlace = gameProvider.routeToPlace;
+      print('made it to add pst frame call back');
+      var tempppp = gameProvider.routePlacePlayerIndex;
+      print('routePlacePlayerIndex $tempppp');
+      print('effectivePlayerIndex $effectivePlayerIndex');
+      print('routeToPlace $routeToPlace');
+
+      if (gameProvider.gameStarted &&
+          gameProvider.routePlacePlayerIndex == effectivePlayerIndex &&
+          routeToPlace != null) {
+        // Navigate to PlaceRoute screen
+        // Use a replacement/dialog/push that prevents going back until an action is taken
+        print('made it to navitation');
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => PlaceRoute(
+              playerIndex: effectivePlayerIndex,
+              route: routeToPlace,
             ),
           ),
         );

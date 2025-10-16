@@ -1,13 +1,17 @@
 import 'dart:ui';
 
+import 'package:ticket_to_ride/models/train_route.dart';
+
 class RouteGeometry {
   final String id;
   final String rawPath;
+  final TrainRoute route;
   Path? transformedPath;
 
   RouteGeometry({
     required this.id,
     required this.rawPath,
+    required this.route, 
     this.transformedPath,
   });
 
