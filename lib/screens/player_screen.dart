@@ -40,24 +40,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
     // player_screen.dart (inside _PlayerScreenState's build method)
 
-WidgetsBinding.instance.addPostFrameCallback((_) {
-  if (gameProvider.gameStarted && 
-      gameProvider.pendingDestinationDrawPlayerIndex == effectivePlayerIndex) {
-    
-    if (ModalRoute.of(context)?.settings.name != 'choose_destination_route') {
-      
-      
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => ChooseDestination(
-            isInitialSelection: false, // Mid-game flag
-            playerIndex: effectivePlayerIndex,
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (gameProvider.gameStarted &&
+          gameProvider.pendingDestinationDrawPlayerIndex ==
+              effectivePlayerIndex) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => ChooseDestination(
+              isInitialSelection: false, // Mid-game flag
+              playerIndex: effectivePlayerIndex,
+            ),
           ),
-        ),
-      );
-    }
-  }
-});
+        );
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(

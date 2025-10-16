@@ -248,8 +248,7 @@ class GameProvider with ChangeNotifier {
       throw Exception('Game has not started yet.');
     }
     // 1. Set the current player as the one expected to draw destinations
-    _gameManager.pendingDestinationDrawPlayerIndex =
-        _gameManager.currentPlayerIndex;
+    _gameManager.pendingDestinationDrawPlayerIndex =_gameManager.currentPlayerIndex;
 
     // 2. The player will call drawDestinations() on their screen
 

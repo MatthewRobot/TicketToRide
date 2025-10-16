@@ -89,12 +89,26 @@ class _ChooseDestinationState extends State<ChooseDestination> {
       }
     } catch (e) {
       print('Error loading destinations: $e');
+      final errorString = e.toString();
+      
+      if (errorString.contains("Player already has pending destinations") ||
+          errorString.contains("It is not your turn")) {
+        // This is a race condition. The correct state is likely being handled 
+        // by the ChooseDestination screen being closed or the turn advancing.
+        // We will just log and pop silently.
+        print('INFO: Suppressing known race condition error: $errorString');
+      } else {
+        // A real error occurred.
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error drawing destinations: $e')),
+          );
+        }
+      }
+      
+      // Always pop on any failed draw to prevent being stuck.
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error drawing destinations: $e')),
-        );
-        Navigator.of(context)
-            .pop(); // Go back if the draw fails (e.g., race condition lost)
+        Navigator.of(context).pop(); 
       }
     }
   }
@@ -355,7 +369,7 @@ void _submit() async {
           );
         } else {
           // Mid-game: Pop back to the main game screen (turn advanced in GameProvider).
-          Navigator.of(context).pop();
+          Navigator.of(context).popUntil((route) => route.isFirst || route.settings.name == '/PlayerScreen');
         }
       }
     } catch (e) {
