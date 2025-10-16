@@ -88,11 +88,11 @@ class DestinationDeck {
     );
   }
 
-  void _reshuffleUsedPile() {
-    _stack = List.from(_usedPile);
-    _usedPile.clear();
-    _shuffleDeck();
-  }
+  // void _reshuffleUsedPile() {
+  //   _stack = List.from(_usedPile);
+  //   _usedPile.clear();
+  //   _shuffleDeck();
+  // }
 
   // Deal initial destination cards and mark them as pending
   List<Destination> dealDestinations(int count) { 
@@ -112,12 +112,17 @@ class DestinationDeck {
   }
 
   // Complete destination selection - move unselected to used pile
-  void completeSelection(List<Destination> unselected) {
+  void completeSelection(List<Destination> selected, List<Destination> unselected) {
     // Also remove the unselected cards from the deck's pending selection
-    for (var card in unselected) {
-        _pendingSelection.remove(card);
+    final allDealtCards = [...selected, ...unselected];
+
+    for (var card in allDealtCards) {
+        // Use remove with object equality (Destination.==)
+        _pendingSelection.remove(card); 
     }
-    addToUsedPile(unselected);
+    
+    // 2. Add only the unselected cards to the used pile.
+    _usedPile.addAll(unselected);
   }
 
   int get stackSize => _stack.length;

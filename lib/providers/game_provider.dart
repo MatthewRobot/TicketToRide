@@ -346,7 +346,7 @@ class GameProvider with ChangeNotifier {
         currentPlayer.pendingDestinations.clear(); // Clear pending list
 
         // 2. Return unselected cards to the deck's used pile
-        currentManager.destinationDeck.completeSelection(unselected);
+        currentManager.destinationDeck.completeSelection(selected,unselected);
 
         // 3. NEW: Clear pending draw state (Crucial for mid-game flow control)
         if (currentManager.pendingDestinationDrawPlayerIndex == playerIndex) {
