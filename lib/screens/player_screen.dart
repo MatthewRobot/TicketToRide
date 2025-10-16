@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ticket_to_ride/screens/choose_destination.dart';
 import '../providers/game_provider.dart';
 import '../models/card.dart' as game_card;
 
@@ -36,6 +37,27 @@ class _PlayerScreenState extends State<PlayerScreen> {
     final player = gameProvider.players[effectivePlayerIndex];
     final isMyTurn = effectivePlayerIndex == gameProvider.currentPlayerIndex;
     final isGameOver = gameProvider.isGameOver;
+
+    // player_screen.dart (inside _PlayerScreenState's build method)
+
+WidgetsBinding.instance.addPostFrameCallback((_) {
+  if (gameProvider.gameStarted && 
+      gameProvider.pendingDestinationDrawPlayerIndex == effectivePlayerIndex) {
+    
+    if (ModalRoute.of(context)?.settings.name != 'choose_destination_route') {
+      
+      
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => ChooseDestination(
+            isInitialSelection: false, // Mid-game flag
+            playerIndex: effectivePlayerIndex,
+          ),
+        ),
+      );
+    }
+  }
+});
 
     return Scaffold(
       appBar: AppBar(

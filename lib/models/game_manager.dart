@@ -27,6 +27,9 @@ class GameManager {
   int currentPlayerIndex = 0;
   bool isGameOver = false;
   int finalTurnCounter = -1;
+  int? pendingDestinationDrawPlayerIndex = null;
+  int cardsDrawnThisTurn = 0; // Tracks train card draws
+  bool drewRainbowFromTable = false; // Tracks rainbow draw limit
 
   // Train Route Points Map (length: points)
   static const Map<int, int> _trainRoutePoints = {
@@ -38,26 +41,26 @@ class GameManager {
     6: 15,
   };
 
-  GameManager(); 
+  GameManager();
 
   factory GameManager.newGame({required String hostUserId}) {
     return GameManager();
   }
-  
+
   void setAllRoutes(List<TrainRoute> routes) {
     allRoutes = routes;
     _routeMap = {for (var route in routes) route.id: route};
   }
-
+  
   // Add a player to the game - UPDATED to include userId
   void addPlayer(String name, Color color, String userId) {
     if (players.any((p) => p.userId == userId)) {
-        return; // Already added
+      return; // Already added
     }
     if (!gameStarted) {
       players.add(Player(
-        name: name, 
-        color: color, 
+        name: name,
+        color: color,
         userId: userId,
       ));
     }
@@ -81,7 +84,10 @@ class GameManager {
 
     // 2. Advance player index
     currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
-
+    
+    cardsDrawnThisTurn = 0; 
+    drewRainbowFromTable = false;
+    
     // 3. Increment final turn counter if in final round
     if (finalTurnCounter != -1) {
       finalTurnCounter++;
@@ -364,6 +370,9 @@ class GameManager {
       'currentPlayerIndex': currentPlayerIndex,
       'isGameOver': isGameOver,
       'finalTurnCounter': finalTurnCounter,
+      'pendingDestinationDrawPlayerIndex': pendingDestinationDrawPlayerIndex,
+      'cardsDrawnThisTurn': cardsDrawnThisTurn, 
+      'drewRainbowFromTable': drewRainbowFromTable,
     };
   }
 
@@ -384,6 +393,10 @@ class GameManager {
     gameManager.currentPlayerIndex = data['currentPlayerIndex'] ?? 0;
     gameManager.isGameOver = data['isGameOver'] ?? false;
     gameManager.finalTurnCounter = data['finalTurnCounter'] ?? -1;
+    gameManager.pendingDestinationDrawPlayerIndex =
+        data['pendingDestinationDrawPlayerIndex'] as int?;
+    gameManager.cardsDrawnThisTurn = data['cardsDrawnThisTurn'] ?? 0;
+    gameManager.drewRainbowFromTable = data['drewRainbowFromTable'] ?? false;
     return gameManager;
   }
 }

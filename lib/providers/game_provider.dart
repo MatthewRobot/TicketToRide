@@ -13,8 +13,6 @@ class GameProvider with ChangeNotifier {
   String _userId = '';
   String? _gameId;
   String? _myPlayerId;
-  int _cardsDrawnThisTurn = 0;
-  bool _drewRainbowFromTable = false;
 
   // Firebase references
   DocumentReference? _gameRef;
@@ -41,8 +39,10 @@ class GameProvider with ChangeNotifier {
   bool get isGameOver => _gameManager.isGameOver;
   String? get gameId => _gameId;
   String get userId => _userId;
-  int get cardsDrawnThisTurn => _cardsDrawnThisTurn;
-  bool get drewRainbowFromTable => _drewRainbowFromTable;
+  int get cardsDrawnThisTurn => _gameManager.cardsDrawnThisTurn;
+  bool get drewRainbowFromTable => _gameManager.drewRainbowFromTable;
+  int? get pendingDestinationDrawPlayerIndex =>
+      _gameManager.pendingDestinationDrawPlayerIndex;
 
   // NEW: Getters for draw rules
   static const int _initialDrawCount = 3;
@@ -242,6 +242,21 @@ class GameProvider with ChangeNotifier {
         isInitial: false);
   }
 
+  // NEW: Initiate a mid-game destination draw for the current player
+  Future<void> initiateMidGameDestinationDraw() async {
+    if (!_gameManager.gameStarted) {
+      throw Exception('Game has not started yet.');
+    }
+    // 1. Set the current player as the one expected to draw destinations
+    _gameManager.pendingDestinationDrawPlayerIndex =
+        _gameManager.currentPlayerIndex;
+
+    // 2. The player will call drawDestinations() on their screen
+
+    await saveGame();
+    notifyListeners();
+  }
+
   /// The core transactional logic to prevent destination card race conditions.
   Future<List<Destination>> _performDestinationDrawTransaction(int drawCount,
       {required bool isInitial}) async {
@@ -305,14 +320,14 @@ class GameProvider with ChangeNotifier {
   /// Completes the destination selection and updates the game state.
   /// This method also needs to be transactional, but for simplicity, we use the
   /// existing saveGame if it doesn't overlap with a deck draw.
+  // game_provider.dart
+
   Future<void> completeDestinationSelection(
       Player player, List<Destination> selected, List<Destination> unselected,
+      // The default value of 'endTurn' doesn't matter much as the caller (ChooseDestination)
+      // will always explicitly pass true/false based on isInitialSelection.
       {bool endTurn = false}) async {
     if (_gameRef == null || myPlayerIndex == null) return;
-
-    // This is also a CRITICAL WRITE, but since it doesn't depend on *reading*
-    // the deck before drawing, a simple saveGame might suffice IF your
-    // completeSelection logic is simple. For maximum safety, a transaction is best.
 
     try {
       await _gameRef!.firestore.runTransaction((transaction) async {
@@ -321,7 +336,11 @@ class GameProvider with ChangeNotifier {
 
         final data = snapshot.data() as Map<String, dynamic>;
         final currentManager = GameManager.fromFirebase(data);
-        final currentPlayer = currentManager.players[myPlayerIndex!];
+
+        final playerIndex =
+            currentManager.players.indexWhere((p) => p.userId == player.userId);
+        if (playerIndex == -1) throw Exception("Player not found.");
+        final currentPlayer = currentManager.players[playerIndex];
 
         // 1. Transfer cards from pending to hand
         currentPlayer.handOfDestinationCards.addAll(selected);
@@ -330,21 +349,29 @@ class GameProvider with ChangeNotifier {
         // 2. Return unselected cards to the deck's used pile
         currentManager.destinationDeck.completeSelection(unselected);
 
-        // 3. Write the updated game state back
+        // 3. NEW: Clear pending draw state (Crucial for mid-game flow control)
+        if (currentManager.pendingDestinationDrawPlayerIndex == playerIndex) {
+          currentManager.pendingDestinationDrawPlayerIndex = null;
+        }
+
+        // 4. NEW: End turn inside the transaction if required (CRITICAL FIX)
+        if (endTurn) {
+          currentManager.nextTurn();
+        }
+
+        // 5. Write the updated game state back
         transaction.set(_gameRef!, currentManager.toFirebase());
       });
 
-      // Update local state
+      // Update local state AFTER successful transaction
       player.handOfDestinationCards.addAll(selected);
       player.pendingDestinations.clear();
 
-      if (endTurn) {
-        nextTurn();
-        return;
-      }
-      await saveGame();
+      // Now, only notify listeners, the turn has already advanced in Firebase
       notifyListeners();
-      // The game loop logic (e.g., nextTurn) should be handled by the UI after this resolves.
+
+      // NOTE: We no longer need an explicit nextTurn() call here.
+      // The previous saveGame() and notifyListeners() call is also handled by notifyListeners().
     } catch (e) {
       print('Transaction failed for completeDestinationSelection: $e');
       rethrow;
@@ -367,7 +394,7 @@ class GameProvider with ChangeNotifier {
     if (card != null) {
       player.handOfCards.add(card);
 
-      _cardsDrawnThisTurn++;
+      _gameManager.cardsDrawnThisTurn++;
 
       await saveGame();
       notifyListeners();
@@ -391,11 +418,11 @@ class GameProvider with ChangeNotifier {
       tableIndex,
     );
 
-    _cardsDrawnThisTurn++;
+    _gameManager.cardsDrawnThisTurn++;
     if (cardToTake.type == game_card.CardType.rainbow) {
       // If the player took a Rainbow, it MUST be their first draw
-      if (_cardsDrawnThisTurn == 1) {
-        _drewRainbowFromTable = true;
+      if (_gameManager.cardsDrawnThisTurn == 1) {
+        _gameManager.drewRainbowFromTable = true;
       } else {
         // This case should be caught by canTakeTableCard, but for safety:
         print('ERROR: Took rainbow as second card.');
@@ -426,8 +453,8 @@ class GameProvider with ChangeNotifier {
 
   void nextTurn() {
     // Reset draw state before advancing turn
-    _cardsDrawnThisTurn = 0;
-    _drewRainbowFromTable = false;
+    _gameManager.cardsDrawnThisTurn = 0;
+    _gameManager.drewRainbowFromTable = false;
 
     _gameManager.nextTurn();
     saveGame();
@@ -437,12 +464,12 @@ class GameProvider with ChangeNotifier {
   // In game_provider.dart
 
   bool get canDrawDeckCard {
-    if (_cardsDrawnThisTurn >= 2) {
+    if (cardsDrawnThisTurn >= 2) {
       // This is the source of your "Draw limit reached" error.
-      print('DBG: Draw deck fail: Cards drawn ($_cardsDrawnThisTurn) >= 2.');
+      print('DBG: Draw deck fail: Cards drawn ($cardsDrawnThisTurn) >= 2.');
       return false;
     }
-    if (_drewRainbowFromTable) {
+    if (drewRainbowFromTable) {
       print('DBG: Draw deck fail: Already drew table rainbow.');
       return false;
     }
@@ -452,7 +479,7 @@ class GameProvider with ChangeNotifier {
 
   bool canTakeTableCard(int tableIndex) {
     if (cardsDrawnThisTurn >= 2) {
-      print('DBG: Draw table fail: Cards drawn ($_cardsDrawnThisTurn) >= 2.');
+      print('DBG: Draw drawn ($cardsDrawnThisTurn) >= 2.');
       return false;
     }
 

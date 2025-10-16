@@ -122,7 +122,16 @@ class _HostScreenState extends State<HostScreen> {
     final screenSize = MediaQuery.of(context).size;
     final gameProvider = Provider.of<GameProvider>(context);
     final isGameEnded = false; // This would be controlled by game state
+    // Guard against an invalid index just in case the data is partially corrupted
+    final currentPlayerIndex = gameProvider.currentPlayerIndex;
+    
+    final bool isValidCurrentPlayer = currentPlayerIndex >= 0 &&
+        currentPlayerIndex < gameProvider.players.length;
 
+    // The logic for the currentPlayer must be conditional, or you need a fallback.
+    // For safety, let's define a nullable variable or handle the conditional view later.
+    final currentPlayer =
+        isValidCurrentPlayer ? gameProvider.players[currentPlayerIndex] : null;
     // Show loading while initializing
     if (_isInitializing) {
       return Scaffold(
@@ -457,38 +466,89 @@ class _HostScreenState extends State<HostScreen> {
                           SizedBox(height: screenSize.height * 0.01),
 
                           // Destination Drawing Button
-                          Container(
-                            margin: EdgeInsets.symmetric(
-                                horizontal: screenSize.width * 0.01),
-                            child: ElevatedButton(
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                        'Destination selection will appear on player devices'),
-                                    duration: Duration(seconds: 2),
+                          // host_screen.dart (Inside the in-game display area)
+                          // Get the current player's name for button/message display
+                          // Check if a destination draw is currently pending for *any* player
+                          if (gameProvider.pendingDestinationDrawPlayerIndex ==
+                              null)
+                            // Destination Drawing Button - Visible when no draw is pending
+                            Container(
+                              margin: EdgeInsets.symmetric(
+                                  horizontal: screenSize.width * 0.01),
+                              child: ElevatedButton(
+                                onPressed: gameProvider.gameStarted
+                                    ? () async {
+                                        try {
+                                          // Call the method to set the state variable
+                                          await gameProvider
+                                              .initiateMidGameDestinationDraw();
+
+                                          // Show confirmation snackbar
+                                          if (mounted) {
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                    'Destination draw initiated for ${currentPlayer?.name}. Selection will appear on their device.'),
+                                                duration:
+                                                    const Duration(seconds: 3),
+                                              ),
+                                            );
+                                          }
+                                        } catch (e) {
+                                          // Show error snackbar if transaction fails
+                                          if (mounted) {
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                    'Failed to initiate draw: ${e.toString()}'),
+                                                backgroundColor: Colors.red,
+                                                duration:
+                                                    const Duration(seconds: 4),
+                                              ),
+                                            );
+                                          }
+                                        }
+                                      }
+                                    : null, // Button disabled if game hasn't started
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green[600],
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: screenSize.height * 0.015,
                                   ),
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green[600],
-                                foregroundColor: Colors.white,
-                                padding: EdgeInsets.symmetric(
-                                  vertical: screenSize.height * 0.015,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
                                 ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
+                                child: Text(
+                                  // Dynamic label to show who the draw is for
+                                  'Draw Destinations for ${currentPlayer?.name}',
+                                  style: TextStyle(
+                                    fontSize: screenSize.width * 0.015,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
+                            )
+                          else
+                            // Display a message if a player is currently selecting destinations
+                            Padding(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: screenSize.width * 0.01),
                               child: Text(
-                                'Draw Destinations',
+                                'Waiting for ${gameProvider.players[gameProvider.pendingDestinationDrawPlayerIndex!].name} to choose destinations...',
                                 style: TextStyle(
                                   fontSize: screenSize.width * 0.015,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .primary, // Or use a prominent color
                                   fontWeight: FontWeight.bold,
                                 ),
+                                textAlign: TextAlign.center,
                               ),
                             ),
-                          ),
 
                           SizedBox(height: screenSize.height * 0.01),
 
