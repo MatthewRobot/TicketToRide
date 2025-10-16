@@ -132,7 +132,7 @@ class _PlaceRouteState extends State<PlaceRoute> {
                 SizedBox(width: screenSize.width * 0.02),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: (){
+                    onPressed: () {
                       gameProvider.cancelRoutPlaceHelper();
                       Navigator.of(context).pop();
                     },
@@ -194,57 +194,106 @@ class _PlaceRouteState extends State<PlaceRoute> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                card.name,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: screenSize.width * 0.03,
-                  fontWeight: FontWeight.bold,
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(8.0),
                 ),
-                textAlign: TextAlign.center,
+                child: Text(
+                  ' ' + card.name + ' ',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: screenSize.width * 0.03,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
               SizedBox(height: screenSize.height * 0.005),
-              Text(
-                'Available: $available',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: screenSize.width * 0.025,
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(8.0),
+                ),
+                child: Text(
+                  ' Available: $available ',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: screenSize.width * 0.025,
+                  ),
                 ),
               ),
               if (canSelect) ...[
-                SizedBox(height: screenSize.height * 0.005),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    IconButton(
-                      onPressed:
-                          selected > 0 ? () => _decreaseCard(cardType) : null,
-                      icon: Icon(
-                        Icons.remove_circle,
-                        color: Colors.white,
-                        size: screenSize.width * 0.05,
+                SizedBox(height: screenSize.width * 0.005),
+                Container(
+                  width: screenSize.width * 0.2,
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                  // Add minimal padding around the entire control block
+                  padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                  child: Row(
+                    // Keep mainAxisAlignment.center, but it's less critical now
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    // Use CrossAxisAlignment.center to vertically align the icons and text
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Use SizedBox to wrap the IconButton and constrain its size
+                      SizedBox(
+                        width:
+                            screenSize.width * 0.05, // Control horizontal size
+                        height:
+                            screenSize.width * 0.05, // Control vertical size
+                        child: IconButton(
+                          onPressed: selected > 0
+                              ? () => _decreaseCard(cardType)
+                              : null,
+                          padding:
+                              EdgeInsets.zero, // Remove all default padding
+                          icon: Icon(
+                            Icons.remove_circle,
+                            color: Colors.white,
+                            size: screenSize.width *
+                                0.04, // Use a smaller size for the icon itself
+                          ),
+                        ),
                       ),
-                    ),
-                    Text(
-                      '$selected',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: screenSize.width * 0.04,
-                        fontWeight: FontWeight.bold,
+
+                      // The number, slightly larger for visibility
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                        child: Text(
+                          '$selected',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: screenSize.width *
+                                0.045, // Slightly adjust font size
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                    ),
-                    IconButton(
-                      onPressed: selected < available
-                          ? () => _increaseCard(cardType)
-                          : null,
-                      icon: Icon(
-                        Icons.add_circle,
-                        color: Colors.white,
-                        size: screenSize.width * 0.05,
+
+                      // Repeat SizedBox wrapper for the add button
+                      SizedBox(
+                        width: screenSize.width * 0.05,
+                        height: screenSize.width * 0.05,
+                        child: IconButton(
+                          onPressed: selected < available
+                              ? () => _increaseCard(cardType)
+                              : null,
+                          padding:
+                              EdgeInsets.zero, // Remove all default padding
+                          icon: Icon(
+                            Icons.add_circle,
+                            color: Colors.white,
+                            size: screenSize.width * 0.04,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                )
               ],
             ],
           ),
