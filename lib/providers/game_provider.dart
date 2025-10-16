@@ -498,6 +498,13 @@ class GameProvider with ChangeNotifier {
     return success;
   }
 
+  void cancelRoutPlaceHelper() async{
+    _gameManager.resetPlaceRouteState();
+
+    await saveGame();
+    notifyListeners();
+  }
+
   void nextTurn() {
     // Reset draw state before advancing turn
     _gameManager.cardsDrawnThisTurn = 0;
@@ -565,7 +572,8 @@ class GameProvider with ChangeNotifier {
       final Map<String, dynamic> jsonData = json.decode(jsonString);
       final List<dynamic> routesJson = jsonData['routes'] ?? [];
 
-      final routes = routesJson.map((json) => TrainRoute.fromJson(json)).toList();
+      final routes =
+          routesJson.map((json) => TrainRoute.fromJson(json)).toList();
 
       _staticAllRoutes = routes;
 
@@ -573,8 +581,8 @@ class GameProvider with ChangeNotifier {
 
       for (var route in routes) {
         if (!routeOwners.containsKey(route.id)) {
-        routeOwners[route.id] = null;
-      }
+          routeOwners[route.id] = null;
+        }
       }
     } catch (e) {
       print('Error loading routes: $e');

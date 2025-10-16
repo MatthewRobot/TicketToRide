@@ -30,13 +30,13 @@ class _InteractiveMapWidgetState extends State<InteractiveMapWidget> {
   bool _showDebugOverlay = false; // Toggle for debug visualization
   Size? _lastWidgetSize;
 
-  bool _isTapNearRoutePath(Offset tapPoint, Path routePath) {
-    const double hitTolerance = 25.0; // Increase this for easier tapping
+  // bool _isTapNearRoutePath(Offset tapPoint, Path routePath) {
+  //   const double hitTolerance = 25.0; // Increase this for easier tapping
 
-    // Check if the tap point is within the bounding box of the route path,
-    // inflated by the hit tolerance. This is a simple, non-geometric check.
-    return routePath.getBounds().inflate(hitTolerance).contains(tapPoint);
-  }
+  //   // Check if the tap point is within the bounding box of the route path,
+  //   // inflated by the hit tolerance. This is a simple, non-geometric check.
+  //   return routePath.getBounds().inflate(hitTolerance).contains(tapPoint);
+  // }
 
   @override
   void initState() {
@@ -261,23 +261,21 @@ class _InteractiveMapWidgetState extends State<InteractiveMapWidget> {
             if (_mapData == null || widget.onRouteTap == null) {
               return;
             }
-            
+
             if (_mapData != null) {
-              _handleTap(details.localPosition);}
-            final Offset tapPoint = details.localPosition;
+              _handleTap(details.localPosition);
+            }
+            // final Offset tapPoint = details.localPosition;
 
             // Loop through all transformed route geometries
             for (final routeGeometry in _mapData!.routeGeometries) {
-              if (routeGeometry.transformedPath != null) {
-                if (_isTapNearRoutePath(
-                    tapPoint, routeGeometry.transformedPath!)) {
-                  // Call the callback with the linked TrainRoute object
-                  print('it gets to onRouteTap!!!!!');
-                  widget.onRouteTap!(routeGeometry.route);
-                  return; // Stop checking after the first hit
-                }
+              if (routeGeometry.transformedPath != null &&
+                  routeGeometry.transformedPath!.contains(details.localPosition)) {
+                widget.onRouteTap!(routeGeometry.route);
+                return;
               }
             }
+            // }
           },
           onDoubleTap: () {
             setState(() {

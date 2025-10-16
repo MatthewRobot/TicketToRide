@@ -72,7 +72,6 @@ class _PlaceRouteState extends State<PlaceRoute> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SizedBox(height: screenSize.height * 0.05),
-
             Container(
               padding: EdgeInsets.all(screenSize.width * 0.04),
               decoration: BoxDecoration(
@@ -90,9 +89,7 @@ class _PlaceRouteState extends State<PlaceRoute> {
                 textAlign: TextAlign.center,
               ),
             ),
-
             SizedBox(height: screenSize.height * 0.03),
-
             Text(
               'Select train cards to place route:',
               style: TextStyle(
@@ -101,19 +98,13 @@ class _PlaceRouteState extends State<PlaceRoute> {
               ),
               textAlign: TextAlign.center,
             ),
-
             SizedBox(height: screenSize.height * 0.02),
-
             Expanded(
               child: _buildTrainCardSelection(screenSize, availableCards),
             ),
-
             SizedBox(height: screenSize.height * 0.02),
-
             _buildSelectedCardsSummary(screenSize),
-
             SizedBox(height: screenSize.height * 0.02),
-
             Row(
               children: [
                 Expanded(
@@ -141,7 +132,10 @@ class _PlaceRouteState extends State<PlaceRoute> {
                 SizedBox(width: screenSize.width * 0.02),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: (){
+                      gameProvider.cancelRoutPlaceHelper();
+                      Navigator.of(context).pop();
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.grey[600],
                       foregroundColor: Colors.white,
@@ -163,7 +157,6 @@ class _PlaceRouteState extends State<PlaceRoute> {
                 ),
               ],
             ),
-
             SizedBox(height: screenSize.height * 0.02),
           ],
         ),
