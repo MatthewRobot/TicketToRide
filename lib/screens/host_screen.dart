@@ -779,7 +779,7 @@ class _HostScreenState extends State<HostScreen> {
           ),
           Divider(),
           SizedBox(
-            height: screenSize.height / 8,
+            height: screenSize.height / 12,
           ),
           ElevatedButton(
               onPressed: () {
