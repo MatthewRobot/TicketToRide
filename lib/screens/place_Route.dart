@@ -362,6 +362,7 @@ class _PlaceRouteState extends State<PlaceRoute> {
   bool _canSelectCardType(game_card.CardType cardType) {
     if (cardType == game_card.CardType.rainbow) return true;
     if (cardType == requiredColor) return true;
+    if (requiredColor == null) return true;
     return false;
   }
 
