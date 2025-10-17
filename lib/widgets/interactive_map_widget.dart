@@ -8,6 +8,7 @@ import '../models/city_geometry.dart';
 import '../models/route_geometry.dart';
 import 'package:provider/provider.dart'; // ADD Provider for game data lookup
 import '../providers/game_provider.dart';
+import '../models/player.dart'; // <<< ADD THIS IMPORT
 import '../models/train_route.dart' as game_route;
 
 class InteractiveMapWidget extends StatefulWidget {
@@ -270,7 +271,8 @@ class _InteractiveMapWidgetState extends State<InteractiveMapWidget> {
             // Loop through all transformed route geometries
             for (final routeGeometry in _mapData!.routeGeometries) {
               if (routeGeometry.transformedPath != null &&
-                  routeGeometry.transformedPath!.contains(details.localPosition)) {
+                  routeGeometry.transformedPath!
+                      .contains(details.localPosition)) {
                 widget.onRouteTap!(routeGeometry.route);
                 return;
               }
@@ -294,6 +296,31 @@ class _InteractiveMapWidgetState extends State<InteractiveMapWidget> {
                 placeholderBuilder: (context) =>
                     const CircularProgressIndicator(),
               ),
+
+              Consumer<GameProvider>(
+                builder: (context, gameProvider, child) {
+                  // The data needed for the painter
+                  final routeOwners =
+                      gameProvider.routeOwners; // Route owners data
+                  final players =
+                      gameProvider.players; // Player list for colors
+
+                  // Ensure we have map data and players before attempting to draw
+                  if (_mapData == null || players.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+
+                  return CustomPaint(
+                    painter: RouteOwnerPainter(
+                      routeGeometries: _mapData!.routeGeometries,
+                      routeOwners: routeOwners,
+                      players: players,
+                    ),
+                    size: widgetSize,
+                  );
+                },
+              ),
+
               // Visual debugging overlay (toggle with double-tap)
               if (_showDebugOverlay &&
                   _mapData != null &&
@@ -347,5 +374,63 @@ class MapDebugPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) {
     return true;
+  }
+}
+
+class RouteOwnerPainter extends CustomPainter {
+  final List<RouteGeometry> routeGeometries;
+  final Map<String, int?> routeOwners;
+  final List<Player> players;
+  
+  // The desired width of a single route segment. This value MUST match the
+  // width of the route segments in your base map SVG/debug overlay.
+  // We are using a fixed 'world' coordinate size so it covers the underlying geometry.
+  static const double routeBlockWidth = 14.0; 
+
+  RouteOwnerPainter({
+    required this.routeGeometries,
+    required this.routeOwners,
+    required this.players,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // 1. Create a map for quick lookup of RouteGeometry by ID
+    final routeGeometryMap = {for (var geo in routeGeometries) geo.id: geo};
+
+    // 2. Define the base Paint settings for the owned route block
+    final basePaint = Paint()
+      // We use STROKE style to give the line path a thickness (width),
+      // effectively creating a colored block that is "filled in" with color.
+      ..style = PaintingStyle.stroke 
+      ..strokeWidth = routeBlockWidth
+      // Use square cap for a blocky, continuous look that covers the entire route segment
+      ..strokeCap = StrokeCap.square; 
+
+    // 3. Iterate over the owned routes from GameProvider
+    routeOwners.forEach((routeId, ownerIndex) {
+      if (ownerIndex != null && ownerIndex >= 0 && ownerIndex < players.length) {
+        final player = players[ownerIndex];
+        final routeGeometry = routeGeometryMap[routeId];
+
+        if (routeGeometry?.transformedPath != null) {
+          // 4. Create a new Paint object with the player's color
+          final playerPaint = Paint()
+            ..color = player.color
+            ..style = basePaint.style
+            ..strokeWidth = basePaint.strokeWidth
+            ..strokeCap = basePaint.strokeCap;
+
+          // 5. Draw the route path as a thick, continuous line/block
+          canvas.drawPath(routeGeometry!.transformedPath!, playerPaint);
+        }
+      }
+    });
+  }
+  
+  @override
+  bool shouldRepaint(covariant RouteOwnerPainter oldDelegate) {
+    return oldDelegate.routeOwners != routeOwners ||
+        oldDelegate.players != players;
   }
 }
