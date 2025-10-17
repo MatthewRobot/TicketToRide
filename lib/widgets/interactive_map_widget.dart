@@ -10,6 +10,7 @@ import 'package:provider/provider.dart'; // ADD Provider for game data lookup
 import '../providers/game_provider.dart';
 import '../models/player.dart'; // <<< ADD THIS IMPORT
 import '../models/train_route.dart' as game_route;
+import 'package:path_drawing/path_drawing.dart'; // REQUIRED for dashPath
 
 class InteractiveMapWidget extends StatefulWidget {
   final void Function(game_route.TrainRoute route)? onRouteTap;
@@ -322,16 +323,16 @@ class _InteractiveMapWidgetState extends State<InteractiveMapWidget> {
               ),
 
               // Visual debugging overlay (toggle with double-tap)
-              if (_showDebugOverlay &&
-                  _mapData != null &&
-                  _transformationMatrix != null)
-                CustomPaint(
-                  painter: MapDebugPainter(
-                    cityGeometries: _mapData!.cityGeometries,
-                    routeGeometries: _mapData!.routeGeometries,
-                  ),
-                  size: widgetSize,
-                ),
+              // if (_showDebugOverlay &&
+              //     _mapData != null &&
+              //     _transformationMatrix != null)
+              //   CustomPaint(
+              //     painter: MapDebugPainter(
+              //       cityGeometries: _mapData!.cityGeometries,
+              //       routeGeometries: _mapData!.routeGeometries,
+              //     ),
+              //     size: widgetSize,
+              //   ),
             ],
           ),
         );
@@ -381,11 +382,16 @@ class RouteOwnerPainter extends CustomPainter {
   final List<RouteGeometry> routeGeometries;
   final Map<String, int?> routeOwners;
   final List<Player> players;
-  
-  // The desired width of a single route segment. This value MUST match the
-  // width of the route segments in your base map SVG/debug overlay.
-  // We are using a fixed 'world' coordinate size so it covers the underlying geometry.
-  static const double routeBlockWidth = 14.0; 
+
+  // Define the base outline properties
+  static const double outlineStrokeWidth = 3.0; // The width of the outline line
+  // Define the dash pattern: [Dash Length, Gap Length]
+  final CircularIntervalList<double> dashArray =
+      CircularIntervalList<double>(<double>[12.0, 12.0]);
+  // NOTE: This array MUST match the one used for the route lines in your SVG or debug painter.
+
+  // NOTE: routeBlockWidth is no longer used for coloring, only for tap logic if needed elsewhere.
+  // static const double routeBlockWidth = 14.0;
 
   RouteOwnerPainter({
     required this.routeGeometries,
@@ -398,38 +404,71 @@ class RouteOwnerPainter extends CustomPainter {
     // 1. Create a map for quick lookup of RouteGeometry by ID
     final routeGeometryMap = {for (var geo in routeGeometries) geo.id: geo};
 
-    // 2. Define the base Paint settings for the owned route block
-    final basePaint = Paint()
-      // We use STROKE style to give the line path a thickness (width),
-      // effectively creating a colored block that is "filled in" with color.
-      ..style = PaintingStyle.stroke 
-      ..strokeWidth = routeBlockWidth
-      // Use square cap for a blocky, continuous look that covers the entire route segment
-      ..strokeCap = StrokeCap.square; 
+    // 2. Define the base Paint settings for the outline
+    final outlinePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = outlineStrokeWidth
+      ..strokeCap = StrokeCap
+          .round; // Using round cap for cleaner joins on the dashed line
 
-    // 3. Iterate over the owned routes from GameProvider
-    routeOwners.forEach((routeId, ownerIndex) {
-      if (ownerIndex != null && ownerIndex >= 0 && ownerIndex < players.length) {
-        final player = players[ownerIndex];
-        final routeGeometry = routeGeometryMap[routeId];
+    // 3. Iterate over ALL route geometries
+    for (final routeGeometry in routeGeometries) {
+      final routeId = routeGeometry.id;
+      final ownerIndex = routeOwners[routeId];
+      final transformedPath = routeGeometry.transformedPath;
 
-        if (routeGeometry?.transformedPath != null) {
-          // 4. Create a new Paint object with the player's color
-          final playerPaint = Paint()
-            ..color = player.color
-            ..style = basePaint.style
-            ..strokeWidth = basePaint.strokeWidth
-            ..strokeCap = basePaint.strokeCap;
+      if (transformedPath == null) continue; // Skip if not transformed
 
-          // 5. Draw the route path as a thick, continuous line/block
-          canvas.drawPath(routeGeometry!.transformedPath!, playerPaint);
-        }
+      // 4. Determine the color
+      Color color;
+      if (ownerIndex != null &&
+          ownerIndex >= 0 &&
+          ownerIndex < players.length) {
+        // Route is owned: Use the player's color
+        color = players[ownerIndex].color;
+      } else {
+        // Route is unowned: Use a "colorless" outline (e.g., a dark grey)
+        color = Colors.transparent;
       }
-    });
+
+      // 5. Create the dashed path
+      final dashedPath = dashPath(
+        transformedPath,
+        dashArray: dashArray,
+      );
+
+      // 6. Draw the dashed outline with the determined color
+      // final finalPaint = outlinePaint..color = color;
+      // canvas.drawPath(dashedPath, finalPaint);
+
+      final int colorAlpha = (color.a * 255.0).round() & 0xff;
+
+      // 6. Draw a THICKER, WHITE dashed path (the 'halo' or 'shadow')
+      final haloPaint = outlinePaint
+        ..color = Colors.white
+        ..strokeWidth = outlineStrokeWidth * 1.8;
+
+      // Only draw the halo if the route is owned (colorAlpha > 0)
+      // This replaces: if (color.alpha > 0) { ... }
+      if (colorAlpha > 0) {
+        canvas.drawPath(dashedPath, haloPaint);
+      }
+
+      // 7. Draw the MAIN dashed outline with the determined color (on top of the halo)
+      // This replaces: if (color.alpha > 0) { ... }
+      if (colorAlpha > 0) {
+        final finalPaint = outlinePaint
+          ..color = color
+          ..strokeWidth = outlineStrokeWidth;
+
+        canvas.drawPath(dashedPath, finalPaint);
+      }
+    }
   }
-  
+
   @override
   bool shouldRepaint(covariant RouteOwnerPainter oldDelegate) {
+    // Repaint only if the routes or players data changes
     return oldDelegate.routeOwners != routeOwners ||
         oldDelegate.players != players;
   }
