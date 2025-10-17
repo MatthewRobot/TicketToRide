@@ -388,6 +388,14 @@ class _PlaceRouteState extends State<PlaceRoute> {
       return false;
     }
 
+    final gameProvider = Provider.of<GameProvider>(context, listen: false);
+    final player = gameProvider.players[widget.playerIndex];
+
+    // Typo corrected (nubmeroftrains -> numberOfTrains) and correct object accessed
+    if (player.numberOfTrains < requiredCount) {
+      return false;
+    }
+
     int nonRainbowCards = 0;
     game_card.CardType? chosenColor;
 

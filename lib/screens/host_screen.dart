@@ -121,8 +121,7 @@ class _HostScreenState extends State<HostScreen> {
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
     final gameProvider = Provider.of<GameProvider>(context);
-    final isGameEnded = false; // This would be controlled by game state
-    // Guard against an invalid index just in case the data is partially corrupted
+    final isGameEnded = gameProvider.isGameOver;
     final currentPlayerIndex = gameProvider.currentPlayerIndex;
 
     final bool isValidCurrentPlayer = currentPlayerIndex >= 0 &&
@@ -417,10 +416,11 @@ class _HostScreenState extends State<HostScreen> {
                                   listen: false);
                               final routeOwner =
                                   gameProvider.routeOwners[route.id];
-                              print('made it to gameProvider.setRouteForPlacing(route);');
+                              print(
+                                  'made it to gameProvider.setRouteForPlacing(route);');
                               final success =
                                   await gameProvider.setRouteForPlacing(route);
-                              
+
                               // 3. Now, check if the widget is still in the tree.
                               if (!mounted) return;
 
@@ -637,112 +637,156 @@ class _HostScreenState extends State<HostScreen> {
     final players = gameProvider.players;
 
     return SingleChildScrollView(
-      child: DataTable(
-        columnSpacing: screenSize.width * 0.005,
-        headingRowHeight: screenSize.height * 0.035,
-        dataRowHeight: screenSize.height * 0.04,
-        columns: [
-          DataColumn(
-            label: Expanded(
-              child: Text(
-                'Name',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: screenSize.width * 0.01,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-          DataColumn(
-            label: Expanded(
-              child: Text(
-                'Pts',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: screenSize.width * 0.01,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-          DataColumn(
-            label: Expanded(
-              child: Text(
-                'Longest',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: screenSize.width * 0.01,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-          if (isGameEnded) ...[
-            DataColumn(
-              label: Expanded(
-                child: Text(
-                  'Dest',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: screenSize.width * 0.01,
+      child: Column(
+        // FIX 2: Wrap the content in Column or Row if you have multiple children
+        children: [
+          // The children property belongs to Column/Row
+          DataTable(
+            columnSpacing: screenSize.width * 0.005,
+            headingRowHeight: screenSize.height * 0.035,
+            dataRowHeight: screenSize.height * 0.04,
+            columns: [
+              DataColumn(
+                label: Expanded(
+                  child: Text(
+                    'Name',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: screenSize.width * 0.01,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
                 ),
               ),
-            ),
-            DataColumn(
-              label: Expanded(
-                child: Text(
-                  'Total',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: screenSize.width * 0.01,
+              DataColumn(
+                label: Expanded(
+                  child: Text(
+                    'R-Pts',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: screenSize.width * 0.01,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-          ],
-        ],
-        rows: players.map((player) {
-          return DataRow(
-            cells: [
-              DataCell(
-                Text(
-                  player.name,
-                  style: TextStyle(fontSize: screenSize.width * 0.008),
-                ),
-              ),
-              DataCell(
-                Text(
-                  '0',
-                  style: TextStyle(fontSize: screenSize.width * 0.008),
-                ),
-              ),
-              DataCell(
-                Text(
-                  '✗',
-                  style: TextStyle(fontSize: screenSize.width * 0.008),
                 ),
               ),
               if (isGameEnded) ...[
-                DataCell(
-                  Text(
-                    '0',
-                    style: TextStyle(fontSize: screenSize.width * 0.008),
+                DataColumn(
+                  label: Expanded(
+                    child: Text(
+                      'LR?',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: screenSize.width * 0.01,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ),
-                DataCell(
-                  Text(
-                    '0',
-                    style: TextStyle(fontSize: screenSize.width * 0.008),
+                DataColumn(
+                  label: Expanded(
+                    child: Text(
+                      'D-Pts',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: screenSize.width * 0.01,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+                DataColumn(
+                  label: Expanded(
+                    child: Text(
+                      'Total',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: screenSize.width * 0.01,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ),
               ],
             ],
-          );
-        }).toList(),
+            rows: players.map((player) {
+              int tempPlayerScore = player.score;
+              int destinationScore = 0; // Only calculated at end of game
+              bool longestRoad = false; // Only calculated at end of game
+              int totalScore = player.score;
+              final isCurrentPlayer = player.userId ==
+                  gameProvider.players[gameProvider.currentPlayerIndex].userId;
+
+              if (isGameEnded) {
+                // Use 'where' to get an Iterable of matching results
+                final playerResultIterable = gameProvider
+                    .getFinalScores()
+                    .where((result) => result['userId'] == player.userId);
+
+                // Check if a result was found
+                final Map<String, dynamic>? playerResult =
+                    playerResultIterable.isEmpty
+                        ? null
+                        : playerResultIterable.first;
+
+                if (playerResult != null) {
+                  destinationScore = playerResult['destinationPoints'] as int;
+                  longestRoad = (playerResult['longestRoadBonus'] as int) > 0;
+                  // finalTotal includes all points (routes + destinations +/- bonus)
+                  totalScore = playerResult['finalTotal'] as int;
+                }
+              }
+              return DataRow(
+                color: isCurrentPlayer
+                    ? WidgetStateProperty.all(player.color.withOpacity(0.3))
+                    : WidgetStateProperty.all(Colors.white),
+                cells: [
+                  DataCell(
+                    Text(
+                      player.name,
+                      style: TextStyle(fontSize: screenSize.width * 0.008),
+                    ),
+                  ),
+                  DataCell(
+                    Text(
+                      '$tempPlayerScore',
+                      style: TextStyle(fontSize: screenSize.width * 0.008),
+                    ),
+                  ),
+                  if (isGameEnded) ...[
+                    DataCell(
+                      Text(
+                        longestRoad ? '🏆' : '-',
+                        style: TextStyle(fontSize: screenSize.width * 0.008),
+                      ),
+                    ),
+                    DataCell(
+                      Text(
+                        '$destinationScore',
+                        style: TextStyle(fontSize: screenSize.width * 0.008),
+                      ),
+                    ),
+                    DataCell(
+                      Text(
+                        '$totalScore',
+                        style: TextStyle(fontSize: screenSize.width * 0.008),
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            }).toList(),
+          ),
+          Divider(),
+          SizedBox(
+            height: screenSize.height / 8,
+          ),
+          ElevatedButton(
+              onPressed: () {
+                gameProvider.nextTurn();
+              },
+              child: const Text('End Turn Button')),
+        ],
       ),
     );
   }

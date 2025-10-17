@@ -186,6 +186,10 @@ class GameProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  List<Map<String, dynamic>> getFinalScores() {
+    return _gameManager.getFinalScores();
+  }
+  
   TrainRoute? get routeToPlace {
     print('arrived at route to place');
     if (_gameManager.routeToPlaceId == null) return null;
