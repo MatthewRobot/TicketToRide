@@ -1,0 +1,708 @@
+{
+    "cardsDrawnThisTurn": 0,
+    "currentPlayerIndex": 1,
+    "deck": {
+      "stack": [
+        {
+          "isVisible": true,
+          "type": "pink"
+        },
+        {
+          "isVisible": false,
+          "type": "white"
+        },
+        {
+          "isVisible": true,
+          "type": "green"
+        },
+        {
+          "isVisible": true,
+          "type": "red"
+        },
+        {
+          "isVisible": false,
+          "type": "white"
+        },
+        {
+          "isVisible": true,
+          "type": "orange"
+        },
+        {
+          "isVisible": false,
+          "type": "white"
+        },
+        {
+          "isVisible": false,
+          "type": "green"
+        },
+        {
+          "isVisible": false,
+          "type": "orange"
+        },
+        {
+          "isVisible": true,
+          "type": "pink"
+        },
+        {
+          "isVisible": true,
+          "type": "orange"
+        },
+        {
+          "isVisible": true,
+          "type": "white"
+        },
+        {
+          "isVisible": false,
+          "type": "red"
+        },
+        {
+          "isVisible": true,
+          "type": "orange"
+        },
+        {
+          "isVisible": true,
+          "type": "red"
+        },
+        {
+          "isVisible": false,
+          "type": "orange"
+        },
+        {
+          "isVisible": false,
+          "type": "rainbow"
+        },
+        {
+          "isVisible": true,
+          "type": "yellow"
+        },
+        {
+          "isVisible": true,
+          "type": "green"
+        },
+        {
+          "isVisible": true,
+          "type": "red"
+        },
+        {
+          "isVisible": false,
+          "type": "black"
+        },
+        {
+          "isVisible": false,
+          "type": "green"
+        },
+        {
+          "isVisible": false,
+          "type": "black"
+        },
+        {
+          "isVisible": false,
+          "type": "rainbow"
+        },
+        {
+          "isVisible": false,
+          "type": "blue"
+        },
+        {
+          "isVisible": false,
+          "type": "blue"
+        },
+        {
+          "isVisible": false,
+          "type": "blue"
+        },
+        {
+          "isVisible": true,
+          "type": "red"
+        },
+        {
+          "isVisible": false,
+          "type": "orange"
+        },
+        {
+          "isVisible": true,
+          "type": "black"
+        },
+        {
+          "isVisible": true,
+          "type": "yellow"
+        },
+        {
+          "isVisible": false,
+          "type": "black"
+        },
+        {
+          "isVisible": true,
+          "type": "green"
+        },
+        {
+          "isVisible": true,
+          "type": "pink"
+        },
+        {
+          "isVisible": true,
+          "type": "yellow"
+        },
+        {
+          "isVisible": false,
+          "type": "pink"
+        },
+        {
+          "isVisible": true,
+          "type": "pink"
+        },
+        {
+          "isVisible": false,
+          "type": "blue"
+        },
+        {
+          "isVisible": false,
+          "type": "green"
+        },
+        {
+          "isVisible": true,
+          "type": "pink"
+        },
+        {
+          "isVisible": false,
+          "type": "blue"
+        },
+        {
+          "isVisible": false,
+          "type": "red"
+        },
+        {
+          "isVisible": false,
+          "type": "green"
+        },
+        {
+          "isVisible": false,
+          "type": "rainbow"
+        },
+        {
+          "isVisible": false,
+          "type": "rainbow"
+        },
+        {
+          "isVisible": false,
+          "type": "black"
+        },
+        {
+          "isVisible": false,
+          "type": "rainbow"
+        },
+        {
+          "isVisible": true,
+          "type": "yellow"
+        },
+        {
+          "isVisible": true,
+          "type": "orange"
+        },
+        {
+          "isVisible": false,
+          "type": "black"
+        },
+        {
+          "isVisible": false,
+          "type": "green"
+        },
+        {
+          "isVisible": true,
+          "type": "orange"
+        },
+        {
+          "isVisible": true,
+          "type": "black"
+        },
+        {
+          "isVisible": true,
+          "type": "white"
+        },
+        {
+          "isVisible": true,
+          "type": "pink"
+        },
+        {
+          "isVisible": true,
+          "type": "white"
+        },
+        {
+          "isVisible": true,
+          "type": "orange"
+        },
+        {
+          "isVisible": false,
+          "type": "rainbow"
+        },
+        {
+          "isVisible": true,
+          "type": "blue"
+        },
+        {
+          "isVisible": false,
+          "type": "blue"
+        },
+        {
+          "isVisible": true,
+          "type": "green"
+        },
+        {
+          "isVisible": false,
+          "type": "white"
+        },
+        {
+          "isVisible": true,
+          "type": "white"
+        },
+        {
+          "isVisible": false,
+          "type": "black"
+        },
+        {
+          "isVisible": false,
+          "type": "yellow"
+        },
+        {
+          "isVisible": true,
+          "type": "yellow"
+        },
+        {
+          "isVisible": false,
+          "type": "black"
+        },
+        {
+          "isVisible": false,
+          "type": "blue"
+        },
+        {
+          "isVisible": false,
+          "type": "orange"
+        },
+        {
+          "isVisible": true,
+          "type": "green"
+        },
+        {
+          "isVisible": true,
+          "type": "yellow"
+        }
+      ],
+      "table": [
+        {
+          "isVisible": true,
+          "type": "red"
+        },
+        {
+          "isVisible": true,
+          "type": "red"
+        },
+        {
+          "isVisible": true,
+          "type": "pink"
+        },
+        {
+          "isVisible": true,
+          "type": "green"
+        },
+        {
+          "isVisible": true,
+          "type": "blue"
+        }
+      ],
+      "usedPile": [
+        {
+          "isVisible": false,
+          "type": "pink"
+        },
+        {
+          "isVisible": false,
+          "type": "pink"
+        },
+        {
+          "isVisible": false,
+          "type": "yellow"
+        },
+        {
+          "isVisible": false,
+          "type": "yellow"
+        },
+        {
+          "isVisible": false,
+          "type": "red"
+        },
+        {
+          "isVisible": false,
+          "type": "red"
+        },
+        {
+          "isVisible": true,
+          "type": "red"
+        }
+      ]
+    },
+    "destinationDeck": {
+      "pendingSelection": [],
+      "stack": [
+        {
+          "from": "Sault St. Marie",
+          "points": 9,
+          "to": "Oklahoma City"
+        },
+        {
+          "from": "Winnipeg",
+          "points": 12,
+          "to": "Houston"
+        },
+        {
+          "from": "Portland",
+          "points": 17,
+          "to": "Nashville"
+        },
+        {
+          "from": "Los Angeles",
+          "points": 16,
+          "to": "Chicago"
+        },
+        {
+          "from": "Montréal",
+          "points": 9,
+          "to": "Atlanta"
+        },
+        {
+          "from": "Chicago",
+          "points": 9,
+          "to": "Santa Fe"
+        },
+        {
+          "from": "Winnipeg",
+          "points": 11,
+          "to": "Little Rock"
+        },
+        {
+          "from": "Duluth",
+          "points": 8,
+          "to": "Houston"
+        },
+        {
+          "from": "Seattle",
+          "points": 22,
+          "to": "New York"
+        },
+        {
+          "from": "Denver",
+          "points": 4,
+          "to": "El Paso"
+        },
+        {
+          "from": "Seattle",
+          "points": 9,
+          "to": "Los Angeles"
+        },
+        {
+          "from": "Kansas City",
+          "points": 5,
+          "to": "Houston"
+        },
+        {
+          "from": "Sault St. Marie",
+          "points": 8,
+          "to": "Nashville"
+        },
+        {
+          "from": "Chicago",
+          "points": 7,
+          "to": "New Orleans"
+        },
+        {
+          "from": "Helena",
+          "points": 8,
+          "to": "Los Angeles"
+        },
+        {
+          "from": "Vancouver",
+          "points": 20,
+          "to": "Montréal"
+        },
+        {
+          "from": "Los Angeles",
+          "points": 21,
+          "to": "New York"
+        },
+        {
+          "from": "Duluth",
+          "points": 10,
+          "to": "El Paso"
+        }
+      ],
+      "usedPile": [
+        {
+          "from": "Montréal",
+          "points": 13,
+          "to": "New Orleans"
+        },
+        {
+          "from": "Los Angeles",
+          "points": 20,
+          "to": "Miami"
+        }
+      ]
+    },
+    "drewRainbowFromTable": false,
+    "finalTurnCounter": 2,
+    "gameStarted": true,
+    "isGameOver": true,
+    "pendingDestinationDrawPlayerIndex": null,
+    "players": [
+      {
+        "color": 4280391411,
+        "handOfCards": [
+          {
+            "isVisible": false,
+            "type": "rainbow"
+          },
+          {
+            "isVisible": false,
+            "type": "yellow"
+          },
+          {
+            "isVisible": false,
+            "type": "yellow"
+          },
+          {
+            "isVisible": false,
+            "type": "rainbow"
+          },
+          {
+            "isVisible": false,
+            "type": "black"
+          },
+          {
+            "isVisible": false,
+            "type": "rainbow"
+          },
+          {
+            "isVisible": false,
+            "type": "black"
+          },
+          {
+            "isVisible": false,
+            "type": "blue"
+          },
+          {
+            "isVisible": false,
+            "type": "green"
+          },
+          {
+            "isVisible": false,
+            "type": "orange"
+          },
+          {
+            "isVisible": false,
+            "type": "orange"
+          }
+        ],
+        "handOfDestinationCards": [
+          {
+            "from": "Boston",
+            "points": 12,
+            "to": "Miami"
+          },
+          {
+            "from": "Toronto",
+            "points": 10,
+            "to": "Miami"
+          },
+          {
+            "from": "Calgary",
+            "points": 7,
+            "to": "Salt Lake City"
+          },
+          {
+            "from": "Portland",
+            "points": 11,
+            "to": "Phoenix"
+          },
+          {
+            "from": "Calgary",
+            "points": 13,
+            "to": "Phoenix"
+          }
+        ],
+        "name": "pri",
+        "numberOfTrains": 6,
+        "pendingDestinations": [],
+        "score": 61,
+        "userId": "5FUFB9d1H1OJZbJlDj197vV9PWA2"
+      },
+      {
+        "color": 4294198070,
+        "handOfCards": [
+          {
+            "isVisible": false,
+            "type": "white"
+          },
+          {
+            "isVisible": false,
+            "type": "pink"
+          },
+          {
+            "isVisible": false,
+            "type": "black"
+          },
+          {
+            "isVisible": false,
+            "type": "red"
+          },
+          {
+            "isVisible": false,
+            "type": "blue"
+          },
+          {
+            "isVisible": false,
+            "type": "white"
+          },
+          {
+            "isVisible": true,
+            "type": "pink"
+          }
+        ],
+        "handOfDestinationCards": [
+          {
+            "from": "Vancouver",
+            "points": 13,
+            "to": "Santa Fe"
+          },
+          {
+            "from": "San Francisco",
+            "points": 17,
+            "to": "Atlanta"
+          },
+          {
+            "from": "Dallas",
+            "points": 11,
+            "to": "New York"
+          },
+          {
+            "from": "Denver",
+            "points": 11,
+            "to": "Pittsburgh"
+          },
+          {
+            "from": "New York",
+            "points": 6,
+            "to": "Atlanta"
+          }
+        ],
+        "name": "pub",
+        "numberOfTrains": 2,
+        "pendingDestinations": [],
+        "score": 59,
+        "userId": "gVeUDtjEecb8BM22IJMky9W56XJ3"
+      }
+    ],
+    "routeOwners": {
+      "R000": 1,
+      "R001": null,
+      "R002": 1,
+      "R003": 0,
+      "R004": null,
+      "R005": 1,
+      "R006": null,
+      "R007": 1,
+      "R008": null,
+      "R009": null,
+      "R010": null,
+      "R011": null,
+      "R012": 1,
+      "R013": 0,
+      "R014": 0,
+      "R015": 0,
+      "R016": null,
+      "R017": null,
+      "R018": 1,
+      "R019": null,
+      "R020": null,
+      "R021": null,
+      "R022": null,
+      "R023": null,
+      "R024": null,
+      "R025": 0,
+      "R026": null,
+      "R027": 1,
+      "R028": 1,
+      "R029": null,
+      "R030": 0,
+      "R031": null,
+      "R032": null,
+      "R033": null,
+      "R034": null,
+      "R035": null,
+      "R036": null,
+      "R037": 1,
+      "R038": null,
+      "R039": null,
+      "R040": null,
+      "R041": null,
+      "R042": null,
+      "R043": null,
+      "R044": null,
+      "R045": null,
+      "R046": null,
+      "R047": null,
+      "R048": null,
+      "R049": 1,
+      "R050": null,
+      "R051": null,
+      "R052": null,
+      "R053": null,
+      "R054": 0,
+      "R055": 0,
+      "R056": null,
+      "R057": null,
+      "R058": null,
+      "R059": null,
+      "R060": null,
+      "R061": null,
+      "R062": null,
+      "R063": null,
+      "R064": 1,
+      "R065": null,
+      "R066": null,
+      "R067": null,
+      "R068": null,
+      "R069": null,
+      "R070": null,
+      "R071": 0,
+      "R072": null,
+      "R073": null,
+      "R074": null,
+      "R075": 0,
+      "R076": null,
+      "R077": null,
+      "R078": 1,
+      "R079": 1,
+      "R080": 1,
+      "R081": null,
+      "R082": null,
+      "R083": null,
+      "R084": 1,
+      "R085": null,
+      "R086": null,
+      "R087": null,
+      "R088": 0,
+      "R089": null,
+      "R090": null,
+      "R091": 0,
+      "R092": null,
+      "R093": null,
+      "R094": null,
+      "R095": 1,
+      "R096": 0,
+      "R097": null,
+      "R098": null,
+      "R099": 1
+    },
+    "routePlacePlayerIndex": null,
+    "routeToPlaceId": null
+  }

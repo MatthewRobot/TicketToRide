@@ -25,6 +25,7 @@ class GameManager {
   Map<String, int?> routeOwners = {};
   List<TrainRoute> allRoutes = [];
   Map<String, TrainRoute> _routeMap = {};
+  Map<String, String> _cityNameToId = {}; // City name to ID mapping
   int currentPlayerIndex = 0;
   bool isGameOver = false;
   int finalTurnCounter = -1;
@@ -54,6 +55,12 @@ class GameManager {
     allRoutes = routes;
     _routeMap = {for (var route in routes) route.id: route};
   }
+
+  void setCityMapping(Map<String, String> cityNameToId) {
+    _cityNameToId = cityNameToId;
+  }
+
+  Map<String, String> get cityNameToId => _cityNameToId;
 
   // Add a player to the game - UPDATED to include userId
   void addPlayer(String name, Color color, String userId) {
@@ -250,8 +257,17 @@ class GameManager {
         .toList();
 
     for (final destination in player.handOfDestinationCards) {
-      final isConnected =
-          _isConnected(destination.from, destination.to, playerRoutes);
+      // Convert city names to city IDs
+      final fromId = _cityNameToId[destination.from];
+      final toId = _cityNameToId[destination.to];
+      
+      if (fromId == null || toId == null) {
+        // If we can't find the city IDs, treat as not connected
+        points -= destination.points;
+        continue;
+      }
+      
+      final isConnected = _isConnected(fromId, toId, playerRoutes);
 
       if (isConnected) {
         points += destination.points;

@@ -75,8 +75,13 @@ class GameProvider with ChangeNotifier {
 
         // 2. 🔑 INJECT the static routes into the new instance
         newGameManager.setAllRoutes(_staticAllRoutes);
+        
+        // 3. 🔑 INJECT the city mapping into the new instance
+        if (_gameManager.cityNameToId.isNotEmpty) {
+          newGameManager.setCityMapping(_gameManager.cityNameToId);
+        }
 
-        // 3. Replace the old instance with the new, COMPLETE instance
+        // 4. Replace the old instance with the new, COMPLETE instance
         _gameManager = newGameManager;
         notifyListeners();
       }
@@ -575,13 +580,21 @@ class GameProvider with ChangeNotifier {
           await rootBundle.loadString('assets/map_info.JSON');
       final Map<String, dynamic> jsonData = json.decode(jsonString);
       final List<dynamic> routesJson = jsonData['routes'] ?? [];
+      final Map<String, dynamic> citiesJson = jsonData['cities'] ?? {};
 
       final routes =
           routesJson.map((json) => TrainRoute.fromJson(json)).toList();
 
+      // Create city name to ID mapping
+      final Map<String, String> cityNameToId = {};
+      citiesJson.forEach((id, name) {
+        cityNameToId[name as String] = id as String;
+      });
+
       _staticAllRoutes = routes;
 
       _gameManager.setAllRoutes(routes);
+      _gameManager.setCityMapping(cityNameToId);
 
       for (var route in routes) {
         if (!routeOwners.containsKey(route.id)) {
