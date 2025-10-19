@@ -43,7 +43,7 @@ flutter:
   uses-material-design: true
   
   assets:
-    - assets/images/
-    - assets/icons/
-    - assets/map_info.JSON
+    - assets/assets/images/
+    - assets/assets/icons/
+    - assets/assets/map_info.JSON
   
