@@ -367,11 +367,34 @@ class _PlaceRouteState extends State<PlaceRoute> {
   }
 
   void _increaseCard(game_card.CardType cardType) {
+    // Get the player and the game state
+    final gameProvider = Provider.of<GameProvider>(context, listen: false);
+    final player = gameProvider.players[widget.playerIndex];
+
+    // 1. Get the maximum number of THIS card type the player actually owns
+    final handCount =
+        player.handOfCards.where((c) => c.type == cardType).length;
+
+    // 2. Get the required length of the route
+    final requiredCount = widget.route.length; // Already set in initState
+
     setState(() {
-      selectedCards[cardType] = (selectedCards[cardType] ?? 0) + 1;
+      int currentSelected = selectedCards[cardType] ?? 0;
+
+      // Constraint A: Don't select more than the route requires (requiredCount)
+      // Constraint B: Don't select more than the player actually has (handCount)
+      // Note: The lower of the two is the effective maximum to select.
+      final overallMax = requiredCount;
+
+      // Also, if a color is required, you must enforce a one-color rule,
+      // but for now, we'll just focus on the count limit.
+
+      if (currentSelected < overallMax && currentSelected < handCount) {
+        // Only increase if we haven't hit the limit and the player has the card
+        selectedCards[cardType] = currentSelected + 1;
+      }
     });
   }
-
   void _decreaseCard(game_card.CardType cardType) {
     setState(() {
       if ((selectedCards[cardType] ?? 0) > 0) {
