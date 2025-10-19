@@ -138,8 +138,18 @@ class GameManager {
     player.score += (GameManager._trainRoutePoints[route.length] ?? 0);
 
     for (final card in cards) {
-      deck.addToUsedPile(card);
-      player.handOfCards.removeWhere((c) => c.type == card.type);
+      deck.addToUsedPile(card); // Add the selected card to the used pile
+
+      // Use indexWhere and removeAt to remove only the FIRST matching card.
+      final cardIndex = player.handOfCards.indexWhere((c) => c.type == card.type);
+      
+      if (cardIndex != -1) {
+        player.handOfCards.removeAt(cardIndex); // Removes exactly one card
+      } else {
+        // This should not happen if the UI's _canPlaceRoute logic is correct.
+        // For production, you might want to log an error here.
+        return false; 
+      }
     }
 
     return true;

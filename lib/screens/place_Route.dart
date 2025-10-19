@@ -279,7 +279,7 @@ class _PlaceRouteState extends State<PlaceRoute> {
                         width: screenSize.width * 0.05,
                         height: screenSize.width * 0.05,
                         child: IconButton(
-                          onPressed: selected < available
+                          onPressed: _canIncreaseCard(cardType, available)
                               ? () => _increaseCard(cardType)
                               : null,
                           padding:
@@ -366,35 +366,58 @@ class _PlaceRouteState extends State<PlaceRoute> {
     return false;
   }
 
+  bool _canIncreaseCard(game_card.CardType cardType, int available) {
+    final totalSelected =
+        selectedCards.values.fold(0, (sum, count) => sum + count);
+
+    // Constraint 1: Must not select more than the total available in hand.
+    final currentSelected = selectedCards[cardType] ?? 0;
+    if (currentSelected >= available) return false;
+
+    // Constraint 2: Must not select more cards than the route requires in total.
+    if (totalSelected >= requiredCount) return false;
+
+    // Constraint 3 (TTR rule): Must be a playable color.
+    if (!_canSelectCardType(cardType)) return false;
+
+    return true;
+  }
+
   void _increaseCard(game_card.CardType cardType) {
-    // Get the player and the game state
     final gameProvider = Provider.of<GameProvider>(context, listen: false);
     final player = gameProvider.players[widget.playerIndex];
 
-    // 1. Get the maximum number of THIS card type the player actually owns
+    // 1. Calculate the TOTAL number of cards currently selected across all types.
+    final totalSelected =
+        selectedCards.values.fold(0, (sum, count) => sum + count);
+
+    // 2. Get the number of THIS card type the player actually owns.
     final handCount =
         player.handOfCards.where((c) => c.type == cardType).length;
 
-    // 2. Get the required length of the route
-    final requiredCount = widget.route.length; // Already set in initState
+    // 3. Get the route requirement.
+    final requiredCount = widget.route.length;
 
     setState(() {
-      int currentSelected = selectedCards[cardType] ?? 0;
+      int currentSelectedOfThisType = selectedCards[cardType] ?? 0;
 
-      // Constraint A: Don't select more than the route requires (requiredCount)
-      // Constraint B: Don't select more than the player actually has (handCount)
-      // Note: The lower of the two is the effective maximum to select.
-      final overallMax = requiredCount;
-
-      // Also, if a color is required, you must enforce a one-color rule,
-      // but for now, we'll just focus on the count limit.
-
-      if (currentSelected < overallMax && currentSelected < handCount) {
-        // Only increase if we haven't hit the limit and the player has the card
-        selectedCards[cardType] = currentSelected + 1;
+      // Constraint A: Do not select more cards than the route requires.
+      if (totalSelected >= requiredCount) {
+        // The player has already selected enough cards. Stop.
+        return;
       }
+
+      // Constraint B: Do not select more cards of this type than the player owns.
+      if (currentSelectedOfThisType >= handCount) {
+        // The player has already selected all cards of this type they possess. Stop.
+        return;
+      }
+
+      // If both constraints pass, safely increment the selection.
+      selectedCards[cardType] = currentSelectedOfThisType + 1;
     });
   }
+
   void _decreaseCard(game_card.CardType cardType) {
     setState(() {
       if ((selectedCards[cardType] ?? 0) > 0) {
@@ -453,16 +476,10 @@ class _PlaceRouteState extends State<PlaceRoute> {
       final cardType = entry.key;
       final count = entry.value;
 
-      final playerHand = gameProvider.players[widget.playerIndex].handOfCards;
-
+      // DO NOT REMOVE CARDS HERE! Instead, create a Card object
+      // for each count to tell the GameManager what to remove.
       for (int i = 0; i < count; i++) {
-        final cardIndex =
-            playerHand.indexWhere((card) => card.type == cardType);
-        if (cardIndex != -1) {
-          cardsToUse.add(playerHand.removeAt(cardIndex));
-        } else {
-          return;
-        }
+        cardsToUse.add(game_card.Card(type: cardType, isVisible: false));
       }
     }
 
