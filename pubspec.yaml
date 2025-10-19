@@ -44,6 +44,5 @@ flutter:
   
   assets:
     - assets/assets/images/
-    - assets/assets/icons/
     - assets/assets/map_info.JSON
   
