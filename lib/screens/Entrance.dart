@@ -17,10 +17,12 @@ class Entrance extends StatefulWidget {
 
 class _Entrance extends State<Entrance> {
   final TextEditingController _gameIdController = TextEditingController();
+  final TextEditingController _hostGameIdController = TextEditingController();
 
   @override
   void dispose() {
     _gameIdController.dispose();
+    _hostGameIdController.dispose();
     super.dispose();
   }
 
@@ -101,6 +103,7 @@ class _Entrance extends State<Entrance> {
               child: const Text('Join Game'),
             ),
             const SizedBox(height: 20),
+            // Host New Game Button
             ElevatedButton(
               onPressed: () {
                 Navigator.push(
@@ -113,7 +116,50 @@ class _Entrance extends State<Entrance> {
                     const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
                 textStyle: const TextStyle(fontSize: 18),
               ),
-              child: const Text('Host Game'),
+              child: const Text('Host New Game'),
+            ),
+            const SizedBox(height: 20),
+            // Host Existing Game Section
+            Container(
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.symmetric(horizontal: 32),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: Column(
+                children: [
+                  const Text(
+                    'Host Existing Game',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _hostGameIdController,
+                    decoration: const InputDecoration(
+                      labelText: 'Enter Game ID to Host',
+                      hintText: 'e.g., ABC-123',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.vpn_key),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: () => _hostExistingGame(context),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 40, vertical: 12),
+                      textStyle: const TextStyle(fontSize: 16),
+                    ),
+                    child: const Text('Host Existing Game'),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -141,6 +187,25 @@ class _Entrance extends State<Entrance> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const ChooseColorName()),
+    );
+  }
+
+  // New _hostExistingGame method
+  void _hostExistingGame(BuildContext context) {
+    final gameId = _hostGameIdController.text.trim();
+    if (gameId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a Game ID.')),
+      );
+      return;
+    }
+
+    // Navigate to HostScreen with the provided game ID
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => HostScreen(gameId: gameId),
+      ),
     );
   }
 }

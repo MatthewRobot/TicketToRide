@@ -10,7 +10,9 @@ import '../models/destination.dart';
 import '../models/card.dart' as game_card;
 
 class HostScreen extends StatefulWidget {
-  const HostScreen({super.key});
+  final String? gameId; // Optional game ID to connect to existing game
+  
+  const HostScreen({super.key, this.gameId});
 
   @override
   State<HostScreen> createState() => _HostScreenState();
@@ -42,28 +44,60 @@ class _HostScreenState extends State<HostScreen> {
         _isInitializing = true;
       });
 
-      final newGameRef = FirebaseFirestore.instance.collection('games').doc();
-      final gameId = newGameRef.id;
-
       try {
-        // 1. Connection (Log is expected)
-        await gameProvider.connectToGame(gameId);
+        // If a gameId was provided, connect to existing game
+        if (widget.gameId != null && widget.gameId!.isNotEmpty) {
+          final gameId = widget.gameId!;
+          
+          // Check if game exists
+          final gameDoc = await FirebaseFirestore.instance
+              .collection('games')
+              .doc(gameId)
+              .get();
+          
+          if (!gameDoc.exists) {
+            throw Exception('Game with ID $gameId does not exist.');
+          }
+          
+          // Connect to existing game
+          await gameProvider.connectToGame(gameId);
+          
+          if (mounted) {
+            setState(() {
+              _displayedGameId = gameId;
+              _isInitializing = false;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Connected to game: $gameId'),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        } else {
+          // Create new game
+          final newGameRef = FirebaseFirestore.instance.collection('games').doc();
+          final gameId = newGameRef.id;
 
-        // 2. CRITICAL STEP: Save/Create Document
-        await gameProvider.saveGame(); // ⬅️ Suspect for unhandled exception
+          // 1. Connection (Log is expected)
+          await gameProvider.connectToGame(gameId);
 
-        // 3. Update UI state only after successful save
-        if (mounted) {
-          setState(() {
-            _displayedGameId = gameId;
-            _isInitializing = false;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Game ID: $gameId. Share this with players!'),
-              duration: const Duration(seconds: 5),
-            ),
-          );
+          // 2. CRITICAL STEP: Save/Create Document
+          await gameProvider.saveGame(); // ⬅️ Suspect for unhandled exception
+
+          // 3. Update UI state only after successful save
+          if (mounted) {
+            setState(() {
+              _displayedGameId = gameId;
+              _isInitializing = false;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Game ID: $gameId. Share this with players!'),
+                duration: const Duration(seconds: 5),
+              ),
+            );
+          }
         }
       } catch (e) {
         // 4. Catch and log any exceptions from connectToGame or saveGame
@@ -73,7 +107,7 @@ class _HostScreenState extends State<HostScreen> {
             _isInitializing = false; // MUST set to false to un-stick the UI
           });
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to create game: Check Console.')),
+            SnackBar(content: Text('Failed to ${widget.gameId != null ? "connect to" : "create"} game: ${e.toString()}')),
           );
         }
       }
