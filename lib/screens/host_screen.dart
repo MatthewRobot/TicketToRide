@@ -820,8 +820,100 @@ class _HostScreenState extends State<HostScreen> {
                 gameProvider.nextTurn();
               },
               child: const Text('End Turn Button')),
+          SizedBox(height: 10),
+          ElevatedButton(
+              onPressed: () {
+                _showFinalScores(context, gameProvider);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.purple[600],
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Calculate Final Scores')),
         ],
       ),
+    );
+  }
+
+  void _showFinalScores(BuildContext context, GameProvider gameProvider) {
+    final finalScores = gameProvider.getFinalScores();
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Final Scores'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ...finalScores.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final result = entry.value;
+                    final rank = index + 1;
+                    final medal = rank == 1 ? '🥇' : rank == 2 ? '🥈' : rank == 3 ? '🥉' : '$rank.';
+                    
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Color(result['color'] as int).withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Color(result['color'] as int),
+                            width: 2,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  '$medal ${result['name']}',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text('Route Points: ${result['trainRoutePoints']}'),
+                            Text('Destination Points: ${result['destinationPoints']}'),
+                            if ((result['longestRoadBonus'] as int) > 0)
+                              Text('Longest Road Bonus: +${result['longestRoadBonus']}'),
+                            const Divider(),
+                            Text(
+                              'Total: ${result['finalTotal']}',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
     );
   }
 
