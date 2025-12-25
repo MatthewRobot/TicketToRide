@@ -26,6 +26,7 @@ class GameManager {
   List<TrainRoute> allRoutes = [];
   Map<String, TrainRoute> _routeMap = {};
   Map<String, String> _cityNameToId = {}; // City name to ID mapping
+  Set<String> _loggedMissingCities = {}; // Track logged missing cities to avoid spam
   int currentPlayerIndex = 0;
   bool isGameOver = false;
   int finalTurnCounter = -1;
@@ -136,6 +137,7 @@ class GameManager {
     routeOwners[route.id] = playerIndex;
     player.numberOfTrains -= route.length;
     player.score += (GameManager._trainRoutePoints[route.length] ?? 0);
+    _clearFinalScoresCache(); // Clear cache when routes change
 
     // Collect all indices first, then remove in reverse order to avoid index shifting
     final List<int> indicesToRemove = [];
@@ -289,7 +291,12 @@ class GameManager {
       
       if (fromId == null || toId == null) {
         // If we can't find the city IDs, treat as not connected
-        print('Destination ${destination.from} to ${destination.to}, Status: not connected (city IDs not found)');
+        // Only print once per destination to avoid spam
+        if (!_loggedMissingCities.contains('${destination.from}-${destination.to}')) {
+          print('Destination ${destination.from} to ${destination.to}, Status: not connected (city IDs not found)');
+          print('  Looking for: "${destination.from}" and "${destination.to}"');
+          _loggedMissingCities.add('${destination.from}-${destination.to}');
+        }
         points -= destination.points;
         continue;
       }
@@ -297,10 +304,8 @@ class GameManager {
       final isConnected = _isConnected(fromId, toId, playerRoutes);
 
       if (isConnected) {
-        print('Destination ${destination.from} to ${destination.to}, Status: connected');
         points += destination.points;
       } else {
-        print('Destination ${destination.from} to ${destination.to}, Status: not connected');
         points -= destination.points;
       }
     }
@@ -336,7 +341,6 @@ class GameManager {
     }
 
     int maxRoadLength = 0;
-    List<String> longestPath = [];
 
     for (final startCity in cities) {
       Map<String, dynamic> dfs(String currentCity, int currentLength, Set<String> usedRoutes, List<String> currentPath) {
@@ -371,21 +375,34 @@ class GameManager {
 
       final result = dfs(startCity, 0, {}, [startCity]);
       final pathLength = result['length'] as int;
-      final pathResult = result['path'] as List<String>;
       
       if (pathLength > maxRoadLength) {
         maxRoadLength = pathLength;
-        longestPath = pathResult;
       }
     }
 
-    print('List of nodes of longest road: $longestPath');
     return maxRoadLength;
   }
+
+  // Cache for final scores to avoid repeated calculations
+  List<Map<String, dynamic>>? _cachedFinalScores;
+  int? _cachedFinalScoresHash;
 
   List<Map<String, dynamic>> getFinalScores() {
     if (players.isEmpty) {
       return [];
+    }
+
+    // Create a hash of the game state to determine if cache is still valid
+    // This includes route owners, player scores, and destination cards
+    final stateHash = Object.hashAll([
+      routeOwners.toString(),
+      players.map((p) => '${p.userId}:${p.score}:${p.handOfDestinationCards.length}').join(','),
+    ]);
+
+    // Return cached results if game state hasn't changed
+    if (_cachedFinalScores != null && _cachedFinalScoresHash == stateHash) {
+      return _cachedFinalScores!;
     }
 
     final List<Map<String, dynamic>> scoreResults = [];
@@ -432,7 +449,17 @@ class GameManager {
 
     scoreResults.sort((a, b) => b['finalTotal'].compareTo(a['finalTotal']));
 
+    // Cache the results
+    _cachedFinalScores = scoreResults;
+    _cachedFinalScoresHash = stateHash;
+
     return scoreResults;
+  }
+  
+  // Clear cache when game state changes significantly
+  void _clearFinalScoresCache() {
+    _cachedFinalScores = null;
+    _cachedFinalScoresHash = null;
   }
 
   // Firebase serialization
