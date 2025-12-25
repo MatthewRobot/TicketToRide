@@ -137,19 +137,36 @@ class GameManager {
     player.numberOfTrains -= route.length;
     player.score += (GameManager._trainRoutePoints[route.length] ?? 0);
 
+    // Collect all indices first, then remove in reverse order to avoid index shifting
+    final List<int> indicesToRemove = [];
+    final Set<int> usedIndices = {}; // Track indices we've already found
+    
     for (final card in cards) {
       deck.addToUsedPile(card); // Add the selected card to the used pile
 
-      // Use indexWhere and removeAt to remove only the FIRST matching card.
-      final cardIndex = player.handOfCards.indexWhere((c) => c.type == card.type);
+      // Find the first matching card that hasn't already been marked for removal
+      int cardIndex = -1;
+      for (int i = 0; i < player.handOfCards.length; i++) {
+        if (player.handOfCards[i].type == card.type && !usedIndices.contains(i)) {
+          cardIndex = i;
+          break;
+        }
+      }
       
       if (cardIndex != -1) {
-        player.handOfCards.removeAt(cardIndex); // Removes exactly one card
+        indicesToRemove.add(cardIndex);
+        usedIndices.add(cardIndex);
       } else {
         // This should not happen if the UI's _canPlaceRoute logic is correct.
         // For production, you might want to log an error here.
         return false; 
       }
+    }
+
+    // Remove cards in reverse order (highest index first) to avoid index shifting
+    indicesToRemove.sort(); // Ensure they're sorted
+    for (int i = indicesToRemove.length - 1; i >= 0; i--) {
+      player.handOfCards.removeAt(indicesToRemove[i]);
     }
 
     return true;
@@ -261,8 +278,7 @@ class GameManager {
     final player = players[playerIndex];
 
     final playerRoutes = _routeMap.entries
-        .where((entry) =>
-            entry.value.id != null && routeOwners[entry.key] == playerIndex)
+        .where((entry) => routeOwners[entry.key] == playerIndex)
         .map((entry) => entry.value)
         .toList();
 
@@ -273,6 +289,7 @@ class GameManager {
       
       if (fromId == null || toId == null) {
         // If we can't find the city IDs, treat as not connected
+        print('Destination ${destination.from} to ${destination.to}, Status: not connected (city IDs not found)');
         points -= destination.points;
         continue;
       }
@@ -280,8 +297,10 @@ class GameManager {
       final isConnected = _isConnected(fromId, toId, playerRoutes);
 
       if (isConnected) {
+        print('Destination ${destination.from} to ${destination.to}, Status: connected');
         points += destination.points;
       } else {
+        print('Destination ${destination.from} to ${destination.to}, Status: not connected');
         points -= destination.points;
       }
     }
@@ -295,7 +314,10 @@ class GameManager {
         .map((entry) => entry.value)
         .toList();
 
-    if (playerRoutes.isEmpty) return 0;
+    if (playerRoutes.isEmpty) {
+      print('List of nodes of longest road: [] (no routes)');
+      return 0;
+    }
 
     final Set<String> cities = {};
     for (final route in playerRoutes) {
@@ -314,10 +336,12 @@ class GameManager {
     }
 
     int maxRoadLength = 0;
+    List<String> longestPath = [];
 
     for (final startCity in cities) {
-      int dfs(String currentCity, int currentLength, Set<String> usedRoutes) {
-        int longestPathFromHere = currentLength;
+      Map<String, dynamic> dfs(String currentCity, int currentLength, Set<String> usedRoutes, List<String> currentPath) {
+        int longestLengthFromHere = currentLength;
+        List<String> longestPathFromHere = List<String>.from(currentPath);
 
         final neighbors = adj[currentCity] ?? [];
 
@@ -326,18 +350,36 @@ class GameManager {
             final newUsedRoutes = Set<String>.from(usedRoutes)
               ..add(node.routeId);
             final newLength = currentLength + node.routeLength;
+            final newPath = List<String>.from(currentPath)..add(node.cityId);
 
-            longestPathFromHere = math.max(longestPathFromHere,
-                dfs(node.cityId, newLength, newUsedRoutes));
+            final result = dfs(node.cityId, newLength, newUsedRoutes, newPath);
+            final resultLength = result['length'] as int;
+            final resultPath = result['path'] as List<String>;
+
+            if (resultLength > longestLengthFromHere) {
+              longestLengthFromHere = resultLength;
+              longestPathFromHere = resultPath;
+            }
           }
         }
 
-        return longestPathFromHere;
+        return {
+          'length': longestLengthFromHere,
+          'path': longestPathFromHere,
+        };
       }
 
-      maxRoadLength = math.max(maxRoadLength, dfs(startCity, 0, {}));
+      final result = dfs(startCity, 0, {}, [startCity]);
+      final pathLength = result['length'] as int;
+      final pathResult = result['path'] as List<String>;
+      
+      if (pathLength > maxRoadLength) {
+        maxRoadLength = pathLength;
+        longestPath = pathResult;
+      }
     }
 
+    print('List of nodes of longest road: $longestPath');
     return maxRoadLength;
   }
 
